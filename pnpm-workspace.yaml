@@ -1,8 +1,24 @@
+packages:
+  - apps/*
+  - packages/*
 allowBuilds:
   '@google/genai': false
+  better-sqlite3: true
+  esbuild: true
   protobufjs: false
   sharp: true
   unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@superradcompany/microsandbox-darwin-arm64@0.6.9'
+  - '@superradcompany/microsandbox-linux-arm64-gnu@0.6.9'
+  - '@superradcompany/microsandbox-linux-x64-gnu@0.6.9'
+  - '@superradcompany/microsandbox-win32-arm64-msvc@0.6.9'
+  - '@superradcompany/microsandbox-win32-x64-msvc@0.6.9'
+  - microsandbox@0.6.9
 overrides:
   '@types/react': 19.2.18
   '@types/react-dom': 19.2.4
+# eslint-config-next 在运行时用 require('next/...') 取内部 parser，但不声明 peer；
+# monorepo 下需把 next 公共提升到根 node_modules 才能被解析到。
+publicHoistPattern:
+  - next

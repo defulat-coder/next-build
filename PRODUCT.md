@@ -67,12 +67,20 @@
 
 ## 技术底座
 
+仓库形态：**pnpm monorepo**（已落地）：
+
+- `apps/web` — Next.js 16 全栈应用（前端 + Hono API）
+- `packages/db` — 数据层：窄接口 + better-sqlite3/FTS5 本地实现（当前仅接口契约）
+- `packages/sandbox` — 沙箱层：窄接口（创建/执行/读文件/销毁）+ microsandbox 实现（当前仅接口契约）
+
+技术选型：
+
 - Web 框架：Next.js 16 + React 19 + TypeScript（当前仓库骨架已就绪）。
 - 后端框架：Hono（轻量、TS 类型友好，挂载在 Next Route Handler 下），配 zod 做 schema 校验。
 - Agent 运行时：`@anthropic-ai/claude-agent-sdk`（Node SDK，驱动 Claude Code 的 agent 运行时）。
 - 任务工作区：[microsandbox](https://github.com/superradcompany/microsandbox)（开源 microVM 沙箱，自托管服务器 + JS SDK；本地开发与将来服务器部署同一套）。
 - Wiki 生成：OpenWiki CLI（npm 包 `openwiki`，Node/TS，基于 DeepAgents；当前 0.3.x，API 未稳定，锁版本）。
-- 数据层：better-sqlite3 + FTS5（本地唯一数据库；远程库/Supabase 本期不设计，后续再说）。
+- 数据层：better-sqlite3 + FTS5 + Drizzle ORM（本地唯一数据库；FTS5 虚表用原生 SQL 建，常规表走 Drizzle schema；远程库/Supabase 本期不设计，后续再说）。
 - 运行策略：**本地优先**——项目先保证本机可运行，部署到 Vercel 等外部上传环节延后。
 - 对话流式传输：Vercel AI SDK（`ai`）。
 - 尚未引入，落地时需要补充：diff 渲染组件；向量检索（sqlite-vec / pgvector）与 Embedding 方案。
