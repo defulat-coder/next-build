@@ -63,7 +63,7 @@
 - 颜色只用语义 token（`bg-background / bg-card / bg-primary / text-muted-foreground / border-border`），禁止硬编码 hex。
 - 微交互：hover `scale(1.05)`、tap `scale(0.95)`、按钮 `active:scale(0.98)`；尊重 `prefers-reduced-motion`。
 
-设计基调：默认深色「黑绿科技风」（背景 `#0a0e27`，主色翡翠绿 `#10b981`），另备浅色主题；token 用 Tailwind v4 的 `@theme` CSS-first 方式定义在全局 CSS 中（与本仓库现有方式一致，无需 tailwind.config 翻译）。
+设计基调：**浅色优先的极简灰阶**（参考 personal-sites / Apple 风格：白底 + 墨色文字 `#1c1c1e` + 细灰线 `#eee`，无强调色、链接即墨色、SF Pro 系统字体栈、紧凑字距）；深色为中性灰 `#181818`（非黑蓝）。主题经 `<html data-theme>` + localStorage 切换，默认跟随系统，layout 内联脚本防首帧闪烁。token 用 Tailwind v4 的 `@theme` CSS-first 方式定义在全局 CSS 中（与本仓库现有方式一致，无需 tailwind.config 翻译）。
 
 ## 技术底座
 

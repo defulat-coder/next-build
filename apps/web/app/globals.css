@@ -2,56 +2,59 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* dark: 变体跟随 <html data-theme="dark">（手动切换），而非系统 media query。 */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* ============================================
-   主题：黑绿科技风（参考 SEAS 前端 / Uptime Kuma 配色）
-   默认深色，:root.light 切换浅色。
+   主题：极简灰阶（参考 personal-sites / Apple 风格）
+   默认浅色，html[data-theme="dark"] 切换深色。
    颜色一律走语义 token，组件里禁止硬编码 hex。
    ============================================ */
 
 @theme {
   /* 背景层级 */
-  --color-background: #0a0e27;
-  --color-background-secondary: #111827;
-  --color-foreground: #e5e7eb;
-  --color-card: #1a1f36;
-  --color-card-foreground: #e5e7eb;
-  --color-popover: #1a1f36;
-  --color-popover-foreground: #e5e7eb;
+  --color-background: #ffffff;
+  --color-background-secondary: #f5f5f5;
+  --color-foreground: #1c1c1e;
+  --color-card: #ffffff;
+  --color-card-foreground: #1c1c1e;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1c1c1e;
 
-  /* 主强调色：翡翠绿 */
-  --color-primary: #10b981;
+  /* 主强调：墨色（按钮黑底白字，X/Apple 风格） */
+  --color-primary: #1c1c1e;
   --color-primary-foreground: #ffffff;
-  --color-link: #34d399;
+  --color-link: #1c1c1e;
 
   /* 次要层级 */
-  --color-secondary: #1e293b;
-  --color-secondary-foreground: #e5e7eb;
-  --color-muted: #1e293b;
-  --color-muted-foreground: #94a3b8;
-  --color-accent: #1e293b;
-  --color-accent-foreground: #e5e7eb;
-  --color-hover: rgba(16, 185, 129, 0.08);
+  --color-secondary: #f5f5f5;
+  --color-secondary-foreground: #656568;
+  --color-muted: #f2f2f2;
+  --color-muted-foreground: #656568;
+  --color-accent: #f2f2f2;
+  --color-accent-foreground: #1c1c1e;
+  --color-hover: rgba(0, 0, 0, 0.03);
 
   /* 语义色 */
-  --color-destructive: #ef4444;
+  --color-destructive: #e5484d;
   --color-destructive-foreground: #ffffff;
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-info: #3b82f6;
-  --color-success-bg: rgba(16, 185, 129, 0.1);
-  --color-warning-bg: rgba(245, 158, 11, 0.1);
-  --color-destructive-bg: rgba(239, 68, 68, 0.1);
-  --color-info-bg: rgba(59, 130, 246, 0.1);
+  --color-success: #30a46c;
+  --color-warning: #f76b15;
+  --color-info: #0091ff;
+  --color-success-bg: rgba(48, 164, 108, 0.1);
+  --color-warning-bg: rgba(247, 107, 21, 0.1);
+  --color-destructive-bg: rgba(229, 72, 77, 0.1);
+  --color-info-bg: rgba(0, 145, 255, 0.1);
 
-  /* 边框 / 输入 / 焦点环 */
-  --color-border: #2d3748;
-  --color-input: #2d3748;
-  --color-ring: #10b981;
+  /* 边框 / 输入 / 焦点环（输入框边框需 ≥1.5:1，勿浅于 #d4d4d4） */
+  --color-border: #eeeeee;
+  --color-input: #d4d4d4;
+  --color-ring: #1c1c1e;
 
-  /* 字体 */
-  --font-sans: "Plus Jakarta Sans", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --font-display: "Plus Jakarta Sans", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --font-mono: "SF Mono", "Cascadia Code", "JetBrains Mono", "Fira Code", Consolas, monospace;
+  /* 字体：SF Pro 系统栈 */
+  --font-sans: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  --font-display: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* 圆角 */
   --radius-sm: 0.5rem;
@@ -61,94 +64,121 @@
   --radius-2xl: 9999px;
 }
 
-/* === 浅色主题（X 风格黑白 + 蓝色强调） === */
-:root.light {
-  --color-background: #ffffff;
-  --color-background-secondary: #ffffff;
-  --color-foreground: #0f1419;
-  --color-card: #ffffff;
-  --color-card-foreground: #0f1419;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #0f1419;
-  --color-primary: #0f1419;
-  --color-primary-foreground: #ffffff;
-  --color-link: #1d9bf0;
-  --color-secondary: #f7f9f9;
-  --color-secondary-foreground: #536471;
-  --color-muted: #f7f9f9;
-  --color-muted-foreground: #536471;
-  --color-accent: #f7f9f9;
-  --color-accent-foreground: #0f1419;
-  --color-hover: rgba(0, 0, 0, 0.03);
-  --color-destructive: #f4212e;
-  --color-destructive-foreground: #ffffff;
-  --color-border: #eff3f4;
-  --color-input: #eff3f4;
-  --color-ring: #1d9bf0;
-  --color-success: #00ba7c;
-  --color-warning: #f7931a;
-  --color-info: #1d9bf0;
-  --color-success-bg: rgba(0, 186, 124, 0.08);
-  --color-warning-bg: rgba(247, 147, 26, 0.08);
-  --color-destructive-bg: rgba(244, 33, 46, 0.08);
-  --color-info-bg: rgba(29, 155, 240, 0.08);
+/* === 深色主题（personal-sites 中性灰，非黑蓝） === */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-background: #181818;
+  --color-background-secondary: #1e1e1e;
+  --color-foreground: #f4f4f4;
+  --color-card: #1e1e1e;
+  --color-card-foreground: #f4f4f4;
+  --color-popover: #242424;
+  --color-popover-foreground: #f4f4f4;
+
+  --color-primary: #f4f4f4;
+  --color-primary-foreground: #181818;
+  --color-link: #f4f4f4;
+
+  --color-secondary: #242424;
+  --color-secondary-foreground: #999999;
+  --color-muted: #242424;
+  --color-muted-foreground: #999999;
+  --color-accent: #242424;
+  --color-accent-foreground: #f4f4f4;
+  --color-hover: rgba(255, 255, 255, 0.04);
+
+  --color-destructive: #f2555a;
+  --color-destructive-foreground: #181818;
+
+  --color-border: #333333;
+  --color-input: #4a4a4a;
+  --color-ring: #f4f4f4;
 }
 
-/* === 全局基础 === */
-* {
-  box-sizing: border-box;
-  border-color: var(--color-border);
+/* === 全局基础 ===
+   所有元素级规则收进 @layer base：无层手写规则会压过 Tailwind 的工具类
+   （教训：a{color:inherit} 曾让 text-primary-foreground 失效，选中导航 1:1 不可见）。
+   与 Tailwind preflight 重复的规则（box-sizing、img display、表单 font、链接颜色）不重复声明。 */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    background: var(--color-background);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-width: 20rem;
+    min-height: 100vh;
+    margin: 0;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    font-synthesis: none;
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  a {
+    text-decoration: none;
+  }
+
+  h1, h2, h3, h4, h5, h6,
+  .font-display {
+    font-family: var(--font-display);
+    font-weight: 620;
+    letter-spacing: -0.026em;
+  }
+
+  code, pre, kbd, samp,
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  button,
+  [role="button"],
+  select,
+  label[for],
+  input[type="checkbox"],
+  input[type="radio"] {
+    cursor: pointer;
+  }
+
+  button {
+    transition: background-color 0.2s, opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+  }
+
+  button:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  input, textarea, select {
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgba(120, 120, 128, 0.24);
+    color: inherit;
+  }
 }
 
-html {
-  background: var(--color-background);
-  scroll-behavior: smooth;
-}
-
-body {
-  min-width: 20rem;
-  min-height: 100vh;
-  margin: 0;
-  background-color: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.5;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-button,
-input,
-textarea {
-  font: inherit;
-}
-
-img {
-  display: block;
-}
-
-h1, h2, h3, h4, h5, h6,
-.font-display {
-  font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-code, pre, kbd, samp,
-.font-mono {
-  font-family: var(--font-mono);
-}
-
-/* === 无障碍：减少动画偏好 === */
+/* === 无障碍：减少动画偏好（有意全局强约束，保留 !important） === */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -158,37 +188,6 @@ code, pre, kbd, samp,
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-/* === 可交互元素 === */
-button,
-[role="button"],
-select,
-label[for],
-input[type="checkbox"],
-input[type="radio"] {
-  cursor: pointer;
-}
-
-button {
-  transition: background-color 0.2s, opacity 0.2s, transform 0.1s, box-shadow 0.2s;
-}
-
-button:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-button:disabled {
-  cursor: not-allowed;
-}
-
-input, textarea, select {
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-:focus-visible {
-  outline: 2px solid var(--color-ring);
-  outline-offset: 2px;
 }
 
 /* === 滚动条 === */
@@ -208,12 +207,6 @@ input, textarea, select {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-muted-foreground);
-}
-
-/* === 选中态：绿色 === */
-::selection {
-  background: rgba(16, 185, 129, 0.3);
-  color: inherit;
 }
 
 /* === 动画关键帧与工具类 === */
@@ -255,7 +248,7 @@ input, textarea, select {
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-/* === 代码高亮（GitHub Dark 风格，配 rehype-highlight） === */
+/* === 代码高亮（GitHub Dark 风格，配 rehype-highlight；两种主题下代码块均保持深色） === */
 pre code.hljs {
   display: block;
   overflow-x: auto;
@@ -309,10 +302,12 @@ code.hljs {
 
 .prose a {
   color: var(--color-link);
-  text-decoration: none;
-  transition: text-decoration 0.2s;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+  transition: opacity 0.2s;
 }
 
 .prose a:hover {
-  text-decoration: underline;
+  opacity: 0.7;
 }
