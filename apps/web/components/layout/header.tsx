@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { TaskCreateDialog } from "@/components/layout/task-create-dialog";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { UserMenu } from "@/components/layout/user-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -33,6 +34,7 @@ export function Header() {
           </Button>
         </TaskCreateDialog>
         <ThemeToggle />
+        <UserMenu />
       </div>
     </header>
   );

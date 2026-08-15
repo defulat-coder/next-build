@@ -6,6 +6,7 @@ pnpm workspace：
 
 - `apps/web` — Next.js 16 全栈应用（前端 + Hono API，主战场）
 - `packages/db` — 数据层窄接口（`DocStore`），实现为 better-sqlite3 + FTS5
+- `packages/result` — 零依赖 `Result<T, E>` 工具（`ok` / `err` / `map` / `flatMap` / `tryCatch`），异常处理约定的基础设施
 - `packages/sandbox` — 沙箱层窄接口（`SandboxProvider`），实现为 microsandbox
 
 根目录脚本均为委托：`pnpm dev` / `build` / `lint` 转发到 `apps/web`，`pnpm typecheck` / `test` 跑全部包（`pnpm -r`）。

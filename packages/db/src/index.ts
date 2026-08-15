@@ -43,3 +43,8 @@ export interface DocStore {
   /** FTS5 全文检索（unicode61 + trigram 双索引合并排序）。 */
   search(workspaceId: string, query: string, limit?: number): Promise<SearchHit[]>;
 }
+
+export { createAuthStore } from "./auth-store";
+export type { AuthStore, AuthUser, DbError, FeishuUserProfile } from "./auth-store";
+export { createDb } from "./client";
+export type { Db } from "./client";

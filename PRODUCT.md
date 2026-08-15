@@ -1,6 +1,48 @@
 # 产品规划：软件自动化研发平台
 
+<!-- impeccable:product-schema 1 -->
+
 > 本文档是当前阶段的功能规划（Source of Truth），尚未进入实现。改动规划请先改这里。
+
+## Platform
+
+web
+
+## Users
+
+内部小团队的开发者：飞书 OAuth 登录，每人一条用户记录；共用一套部署，不做角色权限。各自在仓库上创建任务、生成 Wiki、向代码提问。
+
+## Product Purpose
+
+让 AI Agent 以**任务**为单位完成真实的研发工作：任务绑定仓库、分支与 Agent 会话，产出以代码分支 + Draft PR 交付，由人审核合并；并围绕仓库沉淀 Wiki 与问答能力，让小团队持续理解自己的代码。
+
+## Positioning
+
+两个邻近产品无法照抄的定位点：
+
+1. **人工 merge 把关 + 本地优先**：Agent 产出一律走 Draft PR，人永远握着 merge 键；数据与执行环境不出自己的机器/服务器。
+2. **任务中心视角**：以任务组织对话、代码变动与知识沉淀，而非以对话（Chat 类产品）或仓库（DeepWiki 类产品）为中心。
+
+## Operating Context
+
+本地/自有服务器运行（当前 macOS 开发机）；工作流依托 GitHub（克隆、任务分支、Draft PR、人工 merge）；沙箱为本地 microsandbox 服务；Wiki 由 OpenWiki CLI 生成；数据存本地 SQLite。设计参考项目：`/Users/xbjt/seas/seas/xibo-seas-front/`（布局与控件）、`/Users/xbjt/Documents/myself/personal-sites`（主题与字体）。
+
+## Brand Commitments
+
+产品名 **Next Build**，工具感，不做品牌包装。
+
+## Evidence on Hand
+
+- 设计参考实现：上述两个本地项目（布局规范与主题 token 的直接证据）。
+- 无用户数据、案例、评价；未来任何页面不得虚构这些数据。
+
+## Product Principles
+
+- 人始终握着 merge 键：Agent 产出必须经人工审核才能进入主干。
+- 任务即分支：一切围绕任务组织，不围绕对话或仓库。
+- 本地优先：先保证本机可运行，外部服务与部署延后。
+- 代码的归宿是 Git：代码变动以分支/PR 形式存在，不进数据库。
+- 外部依赖收口为窄接口：沙箱、数据层均可替换实现。
 
 ## 定位
 
@@ -92,4 +134,4 @@
 - ~~「智能问书」~~ → 暂缓设计，本轮不做。
 - ~~Wiki 生成是调用 Z Read 外部服务还是自建管线~~ → 已定：OpenWiki CLI。待验证：OpenWiki 对多仓库工作区的支持方式（可能需按仓库分别生成再合并）。
 - ~~任务工作区的存放位置与并发隔离策略~~ → 已定：microsandbox 本地/自托管沙箱，任务间以独立 microVM 隔离；Vercel 部署方案搁置。
-- ~~是否需要多用户与权限体系~~ → 已定：单机单用户，不做用户体系与权限。
+- ~~是否需要多用户与权限体系~~ → 已定：飞书 OAuth 登录，每个登录人创建一条用户记录，整站保护（除 /login 与 OAuth 回调外页面和 API 都要求登录）；共用一套部署，不做角色权限。

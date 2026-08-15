@@ -7,7 +7,7 @@
     "noEmit": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "types": ["node"]
+    "types": []
   },
-  "include": ["src", "drizzle.config.ts"]
+  "include": ["src"]
 }
