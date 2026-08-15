@@ -35,6 +35,28 @@ Use **pnpm**（Node.js `>=22.19.0`）：`pnpm install`, `pnpm dev`
 - 提交信息使用中文 Conventional Commits。
 - 保持提交在本地，除非明确要求 push。
 
+## 异常处理
+
+遵循 skill `web-error-handling-result-types`（`.agents/skills/`），核心规则：
+
+- **预期/可恢复错误返回 `Result<T, E>`，不 throw**：校验失败、外部 API（GitHub）、沙箱执行、DB 读写、Agent 运行失败。Result 工具由零依赖小包 `@next-build/result` 提供（`ok` / `err` / `map` / `flatMap` / `tryCatch`）。
+- **非预期错误直接 throw**：编程 bug、启动期配置缺失（`lib/env.ts` 校验失败即属此类）。
+- **错误对象是判别联合**：带 `code` 常量 + `message` + 可选 `cause`，禁止裸 `Error` / `string`；每个包定义自己的错误码枚举（`DbError`、`SandboxError` 等）。
+- **API 边界统一翻译**：Hono handler 把 Result 映射为 `{ error: { code, message } }` + 对应状态码；未捕获异常由 `app.onError` 兜底为 500 `INTERNAL_ERROR`。
+- **沙箱内任务**：失败写入任务状态（`stage: "failed"` + error），不允许静默吞错。
+- **前端**：fetch 封装解析 `error.code` 做针对性提示；渲染级错误走 Next `error.tsx`；任何 Result 返回值不允许丢弃。
+
+## 日志
+
+遵循 skill `structured-logging-lite`（`.agents/skills/`），AI 时代日志是问题追踪的主通道，核心规则：
+
+- **日志器**：`pino`（结构化 JSON）；只在 `apps/web` 的组合根配置输出。`packages/*` 是库，**只接受宿主注入的 `Logger` 接口**，不自带全局输出。
+- **事件即契约**：稳定的事件名（`task.created`、`sandbox.exec`、`wiki.generated`、`ask.query` 等）+ 固定字段（`task_id`、`workspace_id`、`duration_ms`、`error.code`），每条日志必须能回答一个具体的排查问题；不记流水账。
+- **关联**：一次 API 请求一个 `request_id`，一个任务全程带 `task_id`，可串起 路由 → 沙箱 → Agent 的完整链路。
+- **与异常方案咬合**：错误聚合用固定 `error.code`（Result 方案的错误码），不用裸错误字符串；`cause` 保留安全摘要用于调试。
+- **脱敏**：永不记录 token、key、cookie、请求体；prompt 等用户内容本地可记，上服务器前再评。
+- **级别**：`info` = 生命周期里程碑，`warn` = 降级但继续，`error` = 失败；失败不允许降级成 warn 后静默。
+
 ## Commit Attribution
 
 AI commits MUST include:

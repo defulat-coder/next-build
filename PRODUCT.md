@@ -83,6 +83,8 @@
 - 数据层：better-sqlite3 + FTS5 + Drizzle ORM（本地唯一数据库；FTS5 虚表用原生 SQL 建，常规表走 Drizzle schema；远程库/Supabase 本期不设计，后续再说）。
 - 运行策略：**本地优先**——项目先保证本机可运行，部署到 Vercel 等外部上传环节延后。
 - 对话流式传输：Vercel AI SDK（`ai`）。
+- 异常处理：Result 类型方案（skill：`web-error-handling-result-types`）——预期错误作为值返回、非预期错误才 throw；共享零依赖小包 `@next-build/result`；API 边界统一翻译为结构化错误响应。
+- 日志：pino 结构化日志（skill：`structured-logging-lite`）——事件名 + 固定字段契约，`task_id` 全链路关联，packages 只依赖注入的 Logger 接口。
 - 尚未引入，落地时需要补充：diff 渲染组件；向量检索（sqlite-vec / pgvector）与 Embedding 方案。
 
 ## 开放问题

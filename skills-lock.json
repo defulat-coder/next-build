@@ -313,6 +313,12 @@
       "skillPath": "plugins/developer-essentials/skills/sql-optimization-patterns/SKILL.md",
       "computedHash": "19ff8ce86d20aa39cace441e15d23feb9b91be5fbed95526b5bd9ee3bffb6411"
     },
+    "structured-logging-lite": {
+      "source": "majiayu000/spellbook",
+      "sourceType": "github",
+      "skillPath": "skills/structured-logging-lite/SKILL.md",
+      "computedHash": "132b73d90bf9ce248ad4ac64c501a94dcb97d83b3f75909c0fef5b3db2562560"
+    },
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
@@ -372,6 +378,12 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/wayfinder/SKILL.md",
       "computedHash": "f343ecf46157cb645a5494644418308ad95391e9fc696faa47ae5a412bf5f6e4"
+    },
+    "web-error-handling-result-types": {
+      "source": "agents-inc/skills",
+      "sourceType": "github",
+      "skillPath": "src/skills/web-error-handling-result-types/SKILL.md",
+      "computedHash": "e3c1c5eedc3f29a435e659c084a95265b2f0863d6aa8775c8d88b29206772171"
     },
     "writing-beats": {
       "source": "mattpocock/skills",
