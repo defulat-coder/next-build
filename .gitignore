@@ -1,0 +1,15 @@
+.DS_Store
+/.codex/config.toml
+.env
+.env.*
+!.env.example
+.vercel
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+.turbo/
+*.tsbuildinfo
+/var/
