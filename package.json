@@ -15,6 +15,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@ai-sdk/react": "^4.0.69",
     "@anthropic-ai/claude-agent-sdk": "^0.3.233",
     "@shadcn/react": "^0.3.0",
     "@supabase/supabase-js": "2.112.3",
@@ -23,15 +24,18 @@
     "clsx": "2.1.1",
     "hono": "^4.13.2",
     "lucide-react": "1.31.0",
+    "mermaid": "^11.16.1",
     "motion": "^13.1.0",
     "next": "16.3.1",
     "radix-ui": "1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-markdown": "10.1.0",
+    "rehype-highlight": "^7.0.2",
     "remark-gfm": "4.0.1",
     "tailwind-merge": "3.6.0",
-    "zod": "4.4.3"
+    "zod": "4.4.3",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
