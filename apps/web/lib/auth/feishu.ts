@@ -65,17 +65,24 @@ export async function exchangeCode(
   if (!result.ok) return result;
 
   const body = (await result.value.json().catch(() => null)) as {
-    code?: number;
+    code?: number | string;
     msg?: string;
+    error?: string;
+    error_description?: string;
     user_access_token?: string;
+    access_token?: string;
   } | null;
-  if (!result.value.ok || !body || body.code !== 0 || !body.user_access_token) {
+  // 飞书的坑：成功时 code 可能是整数 0 或字符串 "0"；token 字段 v1 叫 user_access_token、v2 也可能叫 access_token。
+  const userAccessToken = body?.user_access_token ?? body?.access_token;
+  const succeeded =
+    result.value.ok && (body?.code === 0 || body?.code === "0" || (body && body.code === undefined && !!userAccessToken));
+  if (!succeeded || !userAccessToken) {
     return err({
       code: "FEISHU_TOKEN_EXCHANGE_FAILED",
-      message: `飞书换 token 失败：${body?.msg ?? `HTTP ${result.value.status}`}`,
+      message: `飞书换 token 失败：${body?.msg ?? body?.error_description ?? body?.error ?? `HTTP ${result.value.status}`}`,
     });
   }
-  return ok({ userAccessToken: body.user_access_token });
+  return ok({ userAccessToken });
 }
 
 export async function getUserInfo(userAccessToken: string): Promise<Result<FeishuProfile, AuthError>> {

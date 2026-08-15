@@ -16,6 +16,7 @@ function loginFailed(c: { redirect: (url: string) => Response }, error: { code: 
     {
       cause: error.cause instanceof Error ? error.cause.message : undefined,
       "error.code": error.code,
+      "error.message": error.message,
       event: "auth.failed",
     },
     "飞书登录失败",

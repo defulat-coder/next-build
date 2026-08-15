@@ -72,6 +72,26 @@ describe("exchangeCode", () => {
     expect(result.error.message).toContain("invalid code");
   });
 
+  it("code 为字符串 \"0\" 也算成功（飞书 v2 的坑）", async () => {
+    mockFetch({ code: "0", user_access_token: "u-token" });
+    const result = await exchangeCode(config, "auth-code");
+    expect(result).toEqual({ ok: true, value: { userAccessToken: "u-token" } });
+  });
+
+  it("无 code 字段但带 access_token 的纯 OAuth2 响应也算成功", async () => {
+    mockFetch({ access_token: "oauth-token", token_type: "Bearer" });
+    const result = await exchangeCode(config, "auth-code");
+    expect(result).toEqual({ ok: true, value: { userAccessToken: "oauth-token" } });
+  });
+
+  it("v2 风格错误（error/error_description 字段）透出真实原因", async () => {
+    mockFetch({ code: 20003, error: "invalid_grant", error_description: "code expired" });
+    const result = await exchangeCode(config, "bad");
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain("code expired");
+  });
+
   it("fetch 抛异常时收敛为 err，不外抛", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
     const result = await exchangeCode(config, "auth-code");
