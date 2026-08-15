@@ -4,7 +4,7 @@
 
 ## 定位
 
-一个以**任务**为核心视角的软件自动化研发平台。底座基于 [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript)（Node 版 `@anthropic-ai/claude-agent-sdk`），通过对话驱动 Agent 完成代码研发工作。
+一个以**任务**为核心视角的软件自动化研发平台。前端、后端全部为 TypeScript。底座基于 [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript)（Node 版 `@anthropic-ai/claude-agent-sdk`），通过对话驱动 Agent 完成代码研发工作。
 
 ## 核心概念
 
@@ -36,7 +36,9 @@
 ## 技术底座
 
 - Web 框架：Next.js 16 + React 19 + TypeScript（当前仓库骨架已就绪）。
-- Agent 运行时：`@anthropic-ai/claude-agent-sdk`（Node SDK，驱动 Claude Code 的 agent 运行时；尚未加入依赖，落地时安装）。
+- 后端框架：Hono（轻量、TS 类型友好，挂载在 Next Route Handler 下），配 zod 做 schema 校验。
+- Agent 运行时：`@anthropic-ai/claude-agent-sdk`（Node SDK，驱动 Claude Code 的 agent 运行时）。
+- 对话流式传输：Vercel AI SDK（`ai`）。
 - 尚未引入，落地时需要补充：Git 操作库（待定，如 `simple-git` 或直接 spawn `git`）、diff 渲染组件、RAG 所需的向量存储与 Embedding 方案。
 
 ## 开放问题
