@@ -14,36 +14,72 @@
 
 ### 1. 创建任务
 
-创建任务后，通过 Claude Agent SDK 与 Agent 对话来实现需求。
+创建任务后，通过 Claude Agent SDK 驱动 Agent 完成需求。
 
-- 任务创建时将指定的 GitHub 仓库**克隆到本地**工作区。
-- 开发过程中提供**代码变动面板**，实时查看工作区的 diff。
-- Agent 在对话过程中可以操作文件、执行 Git 命令并提交。
-- 每个任务对应**一个独立的 Git 分支**（任务即分支）。
+- 每个任务在 **microsandbox**（开源自托管 microVM 沙箱）中运行，任务创建时将指定的 GitHub 仓库克隆进沙箱。沙箱层收口为窄接口（创建/执行/读文件/销毁），microsandbox 是第一个实现，便于将来替换。
+- 每个任务对应**一个独立的 Git 分支**（任务即分支，命名 `agent/<任务名>`）。
+- Agent 在沙箱内可以操作文件、执行 Git 命令并提交。
+- 任务完成后**自动 push 任务分支并开 Draft PR**；**合入 main 必须由人在 GitHub 上操作**（配合 main 分支保护，Agent 无权直接推送主分支）。
+- 代码变动的存储与审阅完全依托 GitHub（分支 + PR diff），不把代码变动存进数据库。
+- 任务列表通过 GitHub API 枚举 `agent/` 前缀的 PR 获得。
 
 ### 2. 仓库 Wiki
 
-对每个 Git 仓库生成对应的 Wiki，期望集成 **Z Read 的实现方式**（参考 [zread.ai](https://zread.ai) 的仓库文档化思路；具体是调用其能力还是自建同类实现，待定）。
+以**工作区（Workspace）**为单位生成 Wiki：可勾选多个 Git 仓库拉入一个工作区，对工作区整体生成文档。
+
+- Wiki 生成使用 LangChain 开源的 **[OpenWiki](https://github.com/langchain-ai/openwiki) CLI**（本地运行，产出为 Markdown 文件，支持代码变更后增量更新）。弃用 Z Read。
+- **源文件与 Wiki 文档一起入库**（本地 SQLite），页面端从库中读取渲染。
+- 入库前过滤文件：排除 lock 文件、二进制、构建产物、minified 文件；超大文件截断或跳过。
+- 源文件在库中只是**只读镜像**，GitHub 仍是真相源，重新生成时整体覆盖。
+- 数据层收口为接口：本地实现为 SQLite，将来部署服务器时再换 Supabase/Postgres。
 
 ### 3. Ask AI
 
-基于生成的 Wiki 和仓库文件构建知识库，提供问答能力（RAG：Wiki 作为结构化知识，源文件作为事实依据）。
+基于库中的 Wiki 文档和源文件做问答（简化 RAG）：
+
+- 检索层用 SQLite **FTS5 全文检索**，`unicode61`（英文/代码标识符）+ `trigram`（中文子串）双索引合并排序。
+- 已知限制：trigram 要求查询词 ≥3 个字符；查询词中的 `-` 等符号需清洗后再 MATCH。
+- 检索结果拼装为上下文交给 Claude 回答；后期需要语义检索时再引入向量（本地可用 sqlite-vec，服务器侧 pgvector）。
 
 ### 4. 智能问书
 
-> 待补充：功能边界、输入输出、与 Ask AI 的关系尚未明确。
+> 暂缓设计：功能边界、输入输出、与 Ask AI 的关系尚未明确，本轮不做。
+
+## UI 设计参考
+
+界面布局与交互风格参考 `/Users/xbjt/seas/seas/xibo-seas-front/`（SEAS 前端），**只参考其显示层设计**，技术栈以本仓库为准（Next.js 16 + Tailwind v4 稳定版 + shadcn 体系）。
+
+布局骨架（Lovart 风格悬浮栏）：
+
+- 根容器 `h-screen overflow-hidden`；**悬浮侧边栏** `fixed` 定位不占流，36×36 纯图标 `rounded-xl`，毛玻璃卡片 `bg-card/90 backdrop-blur-xl shadow-xl`，hover 出 tooltip，选中项 `bg-primary`。
+- 顶栏 `h-14 border-b sticky top-0 z-40`：左 Logo + 胶囊搜索框（focus 变宽），右侧主 CTA → 主题切换/通知/用户菜单。
+- 内容区 `flex-1 overflow-auto p-6 pl-[72px]`（左侧给悬浮栏留位）；列表用卡片网格 `grid md:grid-cols-2 lg:grid-cols-3 gap-4`，卡片 `rounded-xl border p-4 hover:shadow-lg`。
+
+控件规范：
+
+- 按钮统一 `rounded-full` + `text-sm font-bold`，variant：default（`bg-primary`）/ secondary / destructive / outline / ghost / link；确认对话框固定「outline 取消 + destructive 执行」组合；加载态用 `loading` prop。
+- 输入框 `h-10 rounded-full`，focus = `border-primary` + `ring-primary/20`。
+- Badge/标签一律「10% 透明度背景 + 全色文字」胶囊：`bg-<语义色>/10 text-<语义色>`。
+- 颜色只用语义 token（`bg-background / bg-card / bg-primary / text-muted-foreground / border-border`），禁止硬编码 hex。
+- 微交互：hover `scale(1.05)`、tap `scale(0.95)`、按钮 `active:scale(0.98)`；尊重 `prefers-reduced-motion`。
+
+设计基调：默认深色「黑绿科技风」（背景 `#0a0e27`，主色翡翠绿 `#10b981`），另备浅色主题；token 用 Tailwind v4 的 `@theme` CSS-first 方式定义在全局 CSS 中（与本仓库现有方式一致，无需 tailwind.config 翻译）。
 
 ## 技术底座
 
 - Web 框架：Next.js 16 + React 19 + TypeScript（当前仓库骨架已就绪）。
 - 后端框架：Hono（轻量、TS 类型友好，挂载在 Next Route Handler 下），配 zod 做 schema 校验。
 - Agent 运行时：`@anthropic-ai/claude-agent-sdk`（Node SDK，驱动 Claude Code 的 agent 运行时）。
+- 任务工作区：[microsandbox](https://github.com/superradcompany/microsandbox)（开源 microVM 沙箱，自托管服务器 + JS SDK；本地开发与将来服务器部署同一套）。
+- Wiki 生成：OpenWiki CLI（npm 包 `openwiki`，Node/TS，基于 DeepAgents；当前 0.3.x，API 未稳定，锁版本）。
+- 数据层：better-sqlite3 + FTS5（本地唯一数据库；远程库/Supabase 本期不设计，后续再说）。
+- 运行策略：**本地优先**——项目先保证本机可运行，部署到 Vercel 等外部上传环节延后。
 - 对话流式传输：Vercel AI SDK（`ai`）。
-- 尚未引入，落地时需要补充：Git 操作库（待定，如 `simple-git` 或直接 spawn `git`）、diff 渲染组件、RAG 所需的向量存储与 Embedding 方案。
+- 尚未引入，落地时需要补充：diff 渲染组件；向量检索（sqlite-vec / pgvector）与 Embedding 方案。
 
 ## 开放问题
 
-- 「智能问书」的具体定义与范围。
-- Wiki 生成是调用 Z Read 外部服务还是自建管线。
-- 任务工作区的存放位置与并发隔离策略（本地目录 / 云沙箱）。
-- 是否需要多用户与权限体系，还是先做单机单用户。
+- ~~「智能问书」~~ → 暂缓设计，本轮不做。
+- ~~Wiki 生成是调用 Z Read 外部服务还是自建管线~~ → 已定：OpenWiki CLI。待验证：OpenWiki 对多仓库工作区的支持方式（可能需按仓库分别生成再合并）。
+- ~~任务工作区的存放位置与并发隔离策略~~ → 已定：microsandbox 本地/自托管沙箱，任务间以独立 microVM 隔离；Vercel 部署方案搁置。
+- ~~是否需要多用户与权限体系~~ → 已定：单机单用户，不做用户体系与权限。
