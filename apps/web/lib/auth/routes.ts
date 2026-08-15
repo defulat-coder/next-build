@@ -10,11 +10,12 @@ import { buildAuthorizeUrl, checkState, exchangeCode, getUserInfo } from "./feis
 import { OAUTH_STATE_COOKIE, OAUTH_STATE_TTL_SECONDS, SESSION_COOKIE, SESSION_TTL_MS } from "./session";
 import { authStore } from "./store";
 
-/** 登录失败统一打点（不记录 token/code 等敏感值）并跳回登录页。 */
+/** 登录失败统一打点（err 保留原始异常堆栈；不记录 token/code 等敏感值）并跳回登录页。 */
 function loginFailed(c: { redirect: (url: string) => Response }, error: { code: string; message: string; cause?: unknown }) {
-  logger.error(
+  // 飞书授权失败属业务异常（用户可重试），按 warn 记；系统异常在 onError 兜底为 error。
+  logger.warn(
     {
-      cause: error.cause instanceof Error ? error.cause.message : undefined,
+      err: error.cause instanceof Error ? error.cause : undefined,
       "error.code": error.code,
       "error.message": error.message,
       event: "auth.failed",

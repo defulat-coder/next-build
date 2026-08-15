@@ -38,12 +38,20 @@ Use **pnpm**（Node.js `>=22.19.0`）：`pnpm install`, `pnpm dev`
 
 ## 异常处理
 
-遵循 skill `web-error-handling-result-types`（`.agents/skills/`），核心规则：
+完整设计见 `docs/architecture-error-handling.md`（分层模型、错误码注册表、六道兜底防线）。遵循 skill `web-error-handling-result-types`（`.agents/skills/`），核心规则：
 
-- **预期/可恢复错误返回 `Result<T, E>`，不 throw**：校验失败、外部 API（GitHub）、沙箱执行、DB 读写、Agent 运行失败。Result 工具由零依赖小包 `@next-build/result` 提供（`ok` / `err` / `map` / `flatMap` / `tryCatch`）。
+**异常分两类**：
+
+- **业务异常（人类可读）**：预期内、用户能理解并能行动的失败——未登录、校验失败、飞书授权失败、外部 API 拒绝等。`message` 面向用户书写，API 原样透传 + 4xx 状态码；日志记 `warn`。
+- **系统异常（内部）**：非预期或基础设施故障——DB 故障、网络中断、编程 bug。API **不透传内部细节**，前端只显示通用文案 + `error.code`；日志记 `error`，细节全在日志里。
+
+**核心规则**：
+
+- **预期/可恢复错误返回 `Result<T, E>`，不 throw**：校验失败、外部 API（GitHub/飞书）、沙箱执行、DB 读写、Agent 运行失败。Result 工具由零依赖小包 `@next-build/result` 提供（`ok` / `err` / `map` / `flatMap` / `tryCatch`）。
 - **非预期错误直接 throw**：编程 bug、启动期配置缺失（`lib/env.ts` 校验失败即属此类）。
-- **错误对象是判别联合**：带 `code` 常量 + `message` + 可选 `cause`，禁止裸 `Error` / `string`；每个包定义自己的错误码枚举（`DbError`、`SandboxError` 等）。
-- **API 边界统一翻译**：Hono handler 把 Result 映射为 `{ error: { code, message } }` + 对应状态码；未捕获异常由 `app.onError` 兜底为 500 `INTERNAL_ERROR`。
+- **错误对象是判别联合**：带 `code` 常量 + `message` + 可选 `cause`（`cause` 携带原始异常对象），禁止裸 `Error` / `string`；每个包定义自己的错误码枚举（`DbError`、`SandboxError`、`AuthError` 等）。
+- **日志与异常一起写，不吞原始异常**：任何 catch / 返回错误的点位必须同步打点；**原始 Error 对象以 `err` 字段进日志**（pino 序列化器自动带完整堆栈），不允许只记 message 字符串，不允许"记了日志就当处理过"。
+- **API 边界统一翻译**：Hono handler 把 Result 映射为 `{ error: { code, message } }` + 对应状态码——业务异常 message 透传，系统异常替换为通用文案；未捕获异常由 `app.onError` 兜底为 500 `INTERNAL_ERROR` + `err` 全堆栈日志。
 - **沙箱内任务**：失败写入任务状态（`stage: "failed"` + error），不允许静默吞错。
 - **前端**：fetch 封装解析 `error.code` 做针对性提示；渲染级错误走 Next `error.tsx`；任何 Result 返回值不允许丢弃。
 
@@ -57,6 +65,7 @@ Use **pnpm**（Node.js `>=22.19.0`）：`pnpm install`, `pnpm dev`
 - **与异常方案咬合**：错误聚合用固定 `error.code`（Result 方案的错误码），不用裸错误字符串；`cause` 保留安全摘要用于调试。
 - **脱敏**：永不记录 token、key、cookie、请求体；prompt 等用户内容本地可记，上服务器前再评。
 - **级别**：`info` = 生命周期里程碑，`warn` = 降级但继续，`error` = 失败；失败不允许降级成 warn 后静默。
+- **强制执行**：任何新功能/新路由/新包的开发，交付时必须同步补齐日志（生命周期事件 + 失败事件 + 关联字段），日志缺失视为功能未完成；`api.request` 请求级中间件已覆盖所有路由，功能事件需各自打点。
 
 ## Commit Attribution
 
