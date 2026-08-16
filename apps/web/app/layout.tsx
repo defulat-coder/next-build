@@ -1,15 +1,86 @@
-import type { Metadata } from "next";
-import { ThemeProvider } from "next-themes";
-
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-
 import "./globals.css";
 
+import type { Metadata } from "next";
+import {
+  Geist,
+  Geist_Mono,
+  Inter,
+  Lora,
+  Merriweather,
+  Playfair_Display,
+  Roboto,
+  Roboto_Mono,
+  Source_Sans_3,
+  Space_Mono,
+} from "next/font/google";
+
+import { Toaster } from "@/components/ui/sonner";
+import { site } from "@/data/site";
+import { cn } from "@/lib/utils";
+
+import { Providers } from "./providers";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const interVar = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+const roboto = Roboto({
+  variable: "--font-roboto",
+  weight: ["300", "400", "500", "700"],
+  subsets: ["latin"],
+});
+
+const sourceSans = Source_Sans_3({
+  variable: "--font-source-sans",
+  subsets: ["latin"],
+});
+
+const lora = Lora({
+  variable: "--font-lora",
+  subsets: ["latin"],
+});
+
+const merriweather = Merriweather({
+  variable: "--font-merriweather",
+  weight: ["300", "400", "700"],
+  subsets: ["latin"],
+});
+
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+});
+
+const robotoMono = Roboto_Mono({
+  variable: "--font-roboto-mono",
+  subsets: ["latin"],
+});
+
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  weight: ["400", "700"],
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  description:
-    "Next Build：任务驱动的内部研发平台。描述研发需求，Agent 在独立沙箱中完成并产出任务分支 + Draft PR，由你审核后合并。",
-  title: "Next Build",
+  title: site.title,
+  description: site.description,
 };
 
 export default function RootLayout({
@@ -18,17 +89,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
-      <body>
-        {/*
-          next-themes 官方主题方案（shadcn 标准）：attribute="data-theme" 与
-          globals.css 的 html[data-theme="dark"] token 选择器兼容；自带防闪烁内联脚本，
-          localStorage key 为 "theme"（与旧机制一致，用户存量偏好无损迁移）。
-        */}
-        <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
-          <TooltipProvider>{children}</TooltipProvider>
-          <Toaster />
-        </ThemeProvider>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={cn("font-sans", inter.variable)}
+    >
+      <body
+        className={cn(
+          "group/body antialiased",
+          geistSans.variable,
+          geistMono.variable,
+          interVar.variable,
+          roboto.variable,
+          sourceSans.variable,
+          lora.variable,
+          merriweather.variable,
+          playfair.variable,
+          robotoMono.variable,
+          spaceMono.variable,
+        )}
+      >
+        <Providers>{children}</Providers>
+        <Toaster />
       </body>
     </html>
   );

@@ -2,347 +2,380 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* dark: 变体跟随 <html data-theme="dark">（手动切换），而非系统 media query。 */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@plugin "@tailwindcss/typography";
 
-/* ============================================
-   主题：极简灰阶（参考 personal-sites / Apple 风格）
-   默认浅色，html[data-theme="dark"] 切换深色。
-   颜色一律走语义 token，组件里禁止硬编码 hex。
-   ============================================ */
+@custom-variant dark (&:is(.dark *));
 
-@theme {
-  /* 背景层级（Linear 浅色系：白底 + 近白灰次级底） */
-  --color-background: #ffffff;
-  --color-background-secondary: #f7f7f8;
-  --color-foreground: #1c1c1e;
-  --color-card: #ffffff;
-  --color-card-foreground: #1c1c1e;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #1c1c1e;
-
-  /* 主强调：Linear 品牌靛蓝同色系。品牌原值 #5e6ad2 在白底仅 4.70:1、
-     在次级灰底 4.39、在自身 tint 徽标底 4.15（不达 AA 正文线），
-     故同色相微调暗一档为 #5660c8：白底 5.38 / 灰底 5.03 / tint 底 4.70 全过。
-     落在 active 导航 / 主按钮 / 链接 / 徽标 / 焦点环。
-     注意：--color-accent 保留 shadcn 惯例的灰阶 hover 底语义，不做强调色。 */
-  --color-primary: #5660c8;
-  --color-primary-foreground: #ffffff;
-  --color-link: #5660c8;
-
-  /* 次要层级 */
-  --color-secondary: #f7f7f8;
-  --color-secondary-foreground: #6b6f76;
-  --color-muted: #f2f2f4;
-  --color-muted-foreground: #6b6f76;
-  --color-accent: #f2f2f4;
-  --color-accent-foreground: #1c1c1e;
-  --color-hover: rgba(0, 0, 0, 0.03);
-
-  /* 语义色 */
-  --color-destructive: #e5484d;
-  --color-destructive-foreground: #ffffff;
-  /* 浅底上的错误正文（4.5:1 达标，bg-destructive-bg 上使用该色而非 destructive） */
-  --color-destructive-text: #cd2b31;
-  --color-success: #30a46c;
-  --color-warning: #f76b15;
-  --color-info: #0091ff;
-  --color-success-bg: rgba(48, 164, 108, 0.1);
-  --color-warning-bg: rgba(247, 107, 21, 0.1);
-  --color-destructive-bg: rgba(229, 72, 77, 0.1);
-  --color-info-bg: rgba(0, 145, 255, 0.1);
-
-  /* 边框 / 输入 / 焦点环（Linear 浅色边框档；输入框边框需 ≥1.5:1，勿浅于 #d4d4d4） */
-  --color-border: #e4e5e9;
-  --color-input: #d4d4d4;
-  --color-ring: #5660c8;
-
-  /* 卡片 hover 阴影：强调色相 tint + 偏移 + 柔 blur（深色主题在下方覆盖） */
-  --shadow-card: 0 1px 2px rgb(86 96 200 / 0.06), 0 12px 32px -8px rgb(86 96 200 / 0.14);
-
-  /* 字体：SF Pro 系统栈 */
-  --font-sans: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
-  --font-display: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
-  --font-mono: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-
-  /* 圆角 */
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.25rem;
-  --radius-2xl: 9999px;
+:root {
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono:
+    "Geist Mono", "SFMono-Regular", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: hsl(210 40% 98%);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.809 0.105 251.813);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-background: var(--background);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --priority-1: oklch(0.577 0.245 27.325);
+  --priority-2: oklch(0.69 0.199 50.32);
+  --priority-3: oklch(0.754 0.184 85.869);
+  --priority-4: oklch(0.556 0 0);
+  --success: oklch(0.545 0.166 156.743);
+  --warning: oklch(0.754 0.184 85.869);
 }
 
-/* === 深色主题（Linear 深色：近黑底 #08090a + 低亮度浮起面 + 极低透明度边框） === */
-html[data-theme="dark"] {
-  color-scheme: dark;
-
-  --color-background: #08090a;
-  /* 深色下二级层比背景更深（recessed well），浅色卡片浮其上 */
-  --color-background-secondary: #050607;
-  --color-foreground: #f7f8f8;
-  --color-card: #101214;
-  --color-card-foreground: #f7f8f8;
-  --color-popover: #16181a;
-  --color-popover-foreground: #f7f8f8;
-
-  /* 深色强调：Linear 靛蓝调亮。#6e79d6 在 tint 徽标底上仅 4.08（不达标），
-     微调亮一档为 #7a85dd：深底 5.91 / 卡片底 ~5.8 / 15% tint 底 4.62 全过；
-     主按钮深字其上 5.91:1。 */
-  --color-primary: #7a85dd;
-  --color-primary-foreground: #08090a;
-  --color-link: #7a85dd;
-
-  --color-secondary: #16181a;
-  --color-secondary-foreground: #9b9ea5;
-  --color-muted: #16181a;
-  --color-muted-foreground: #9b9ea5;
-  --color-accent: #1c1f24;
-  --color-accent-foreground: #f7f8f8;
-  --color-hover: rgba(255, 255, 255, 0.06);
-
-  --color-destructive: #f2555a;
-  --color-destructive-foreground: #08090a;
-  --color-destructive-text: #ff8589;
-
-  --color-border: #23262b;
-  --color-input: #2e3238;
-  --color-ring: #7a85dd;
-
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px -8px rgb(0 0 0 / 0.6);
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: hsl(210 40% 98%);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.809 0.105 251.813);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+  --priority-1: oklch(0.704 0.191 22.216);
+  --priority-2: oklch(0.753 0.171 49.873);
+  --priority-3: oklch(0.808 0.156 88.447);
+  --priority-4: oklch(0.708 0 0);
+  --success: oklch(0.724 0.144 163.278);
+  --warning: oklch(0.808 0.156 88.447);
 }
 
-/* === 全局基础 ===
-   所有元素级规则收进 @layer base：无层手写规则会压过 Tailwind 的工具类
-   （教训：a{color:inherit} 曾让 text-primary-foreground 失效，选中导航 1:1 不可见）。
-   与 Tailwind preflight 重复的规则（box-sizing、img display、表单 font、链接颜色）不重复声明。 */
+@theme inline {
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-priority-1: var(--priority-1);
+  --color-priority-2: var(--priority-2);
+  --color-priority-3: var(--priority-3);
+  --color-priority-4: var(--priority-4);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+}
+
 @layer base {
-  * {
-    border-color: var(--color-border);
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
   }
 
-  html {
-    background: var(--color-background);
-    scroll-behavior: smooth;
+  * {
+    @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
 
   body {
-    min-width: 20rem;
-    min-height: 100vh;
-    margin: 0;
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-family: var(--font-sans);
-    font-size: 15px;
-    line-height: 1.5;
-    font-synthesis: none;
-    text-rendering: geometricPrecision;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    @apply bg-background text-foreground font-sans;
   }
 
-  a {
-    text-decoration: none;
+  body:has([data-layout="fixed"]) {
+    overflow: hidden;
   }
 
-  h1, h2, h3, h4, h5, h6,
-  .font-display {
-    font-family: var(--font-display);
-    font-weight: 620;
-    /* CJK 语境不做西文负字距（紧排会让中文标题糊成一团） */
-    letter-spacing: 0;
-  }
-
-  code, pre, kbd, samp,
-  .font-mono {
-    font-family: var(--font-mono);
-  }
-
-  /* 主题切换过渡覆盖所有表面与边框（不只 body）。
-     放在 button/input 专属规则之前，让后者的完整 transition 列表覆盖这里的简写。 */
-  a, button, input, textarea, select,
-  header, main, nav, section, article, aside, div, ul, li, span, p {
-    transition-property: background-color, border-color, color;
-    transition-duration: 0.2s;
-    transition-timing-function: ease;
-  }
-
-  button,
-  [role="button"],
-  select,
-  label[for],
-  input[type="checkbox"],
-  input[type="radio"] {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
     cursor: pointer;
   }
 
-  /* 按压反馈只保留 button.tsx 里的 translate-y-px 一套，这里不再叠加 scale(0.98) */
-  button {
-    transition: background-color 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+  .CollapsibleContent {
+    overflow: hidden;
   }
 
-  button:disabled {
-    cursor: not-allowed;
+  .CollapsibleContent[data-state="open"] {
+    animation: slideDown 300ms ease-out;
   }
 
-  input, textarea, select {
-    transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+  .CollapsibleContent[data-state="closed"] {
+    animation: slideUp 300ms ease-out;
   }
 
-  :focus-visible {
-    outline: 2px solid var(--color-ring);
-    outline-offset: 2px;
+  @keyframes slideDown {
+    from {
+      height: 0;
+    }
+
+    to {
+      height: var(--radix-collapsible-content-height);
+    }
   }
 
-  ::selection {
-    background: color-mix(in oklch, var(--color-ring) 24%, transparent);
-    color: inherit;
+  @keyframes slideUp {
+    from {
+      height: var(--radix-collapsible-content-height);
+    }
+
+    to {
+      height: 0;
+    }
+  }
+
+  html {
+    @apply font-sans;
+  }
+  .maplibregl-popup-content {
+    @apply rounded-none! bg-transparent! p-0! shadow-none!;
+  }
+  .maplibregl-popup-tip {
+    @apply hidden!;
   }
 }
 
-/* === 无障碍：减少动画偏好（有意全局强约束，保留 !important） === */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-delay: 0ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+@utility faded-bottom {
+  @apply after:pointer-events-none after:absolute after:bottom-0 after:left-0 after:hidden after:h-32 after:w-full after:bg-[linear-gradient(180deg,_transparent_10%,_hsl(var(--background))_70%)] md:after:block;
+}
+
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
   }
+
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* === 滚动条 === */
-::-webkit-scrollbar {
-  width: 16px;
-}
+@layer base {
+  [data-slot="chart"] {
+    touch-action: auto;
+  }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+  /* Todo display prefs — scoped via [data-todo-prefs] wrapper in
+     (todo)/todo/layout.tsx so they don't leak to admin routes. */
+  [data-todo-prefs][data-font-size="small"] {
+    font-size: 0.875rem;
+  }
+  [data-todo-prefs][data-font-size="medium"] {
+    font-size: 1rem;
+  }
+  [data-todo-prefs][data-font-size="large"] {
+    font-size: 1.125rem;
+  }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border: 4px solid var(--color-background);
-  border-radius: 9999px;
-}
+  [data-todo-prefs][data-density="compact"] {
+    --spacing: 0.2rem;
+  }
+  [data-todo-prefs][data-density="comfortable"] {
+    --spacing: 0.25rem;
+  }
+  [data-todo-prefs][data-density="spacious"] {
+    --spacing: 0.3rem;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-muted-foreground);
-}
+  [data-todo-prefs][data-font-text="geist-sans"] {
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+  [data-todo-prefs][data-font-text="inter"] {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  }
+  [data-todo-prefs][data-font-text="roboto"] {
+    font-family: var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
+  }
+  [data-todo-prefs][data-font-text="source-sans"] {
+    font-family: var(--font-source-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+  [data-todo-prefs][data-font-text="lora"] {
+    font-family: var(--font-lora), ui-serif, Georgia, serif;
+  }
+  [data-todo-prefs][data-font-text="merriweather"] {
+    font-family: var(--font-merriweather), ui-serif, Georgia, serif;
+  }
+  [data-todo-prefs][data-font-text="geist-mono"] {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+  }
+  [data-todo-prefs][data-font-text="roboto-mono"] {
+    font-family: var(--font-roboto-mono), ui-monospace, monospace;
+  }
+  [data-todo-prefs][data-font-text="space-mono"] {
+    font-family: var(--font-space-mono), ui-monospace, monospace;
+  }
 
-/* === 动画关键帧与工具类 === */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+  [data-todo-prefs][data-font-display="geist-sans"]
+    :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+  [data-todo-prefs][data-font-display="inter"] :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  }
+  [data-todo-prefs][data-font-display="roboto"] :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
+  }
+  [data-todo-prefs][data-font-display="source-sans"]
+    :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-source-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+  [data-todo-prefs][data-font-display="playfair"] :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-playfair), ui-serif, Georgia, serif;
+  }
+  [data-todo-prefs][data-font-display="lora"] :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-lora), ui-serif, Georgia, serif;
+  }
+  [data-todo-prefs][data-font-display="merriweather"]
+    :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-merriweather), ui-serif, Georgia, serif;
+  }
+  [data-todo-prefs][data-font-display="geist-mono"]
+    :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+  }
+  [data-todo-prefs][data-font-display="roboto-mono"]
+    :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-roboto-mono), ui-monospace, monospace;
+  }
+  [data-todo-prefs][data-font-display="space-mono"]
+    :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-space-mono), ui-monospace, monospace;
+  }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+  /* Toggle Theme View Transitions */
+  @keyframes theme-mask {
+    0% {
+      clip-path: polygon(
+        var(--x, 50%) var(--y, 50%),
+        var(--x, 50%) var(--y, 50%),
+        var(--x, 50%) var(--y, 50%),
+        var(--x, 50%) var(--y, 50%)
+      );
+    }
 
-/* 页面/卡片入场：从已可见状态（0.35 透明度）起跳，exponential ease-out。
-   配合 animation-fill-mode: both， stagger 延迟期间元素保持半可见，不从全透明闪烁。 */
-@keyframes enter {
-  from { opacity: 0.35; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+    100% {
+      clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+    }
+  }
 
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
+  html.theme-transition::view-transition-old(root),
+  html.theme-transition::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
+  html.theme-transition::view-transition-old(root) {
+    z-index: 1;
+  }
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease;
-}
+  html.theme-transition::view-transition-new(root) {
+    z-index: 2;
+    animation: theme-mask 0.3s ease-out forwards;
+  }
 
-.animate-slideUp {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
+  @keyframes cornerGlitch {
+    0% {
+      opacity: 1;
+    }
 
-.animate-enter {
-  animation: enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
+    15% {
+      opacity: 0;
+    }
 
-.animate-scaleIn {
-  animation: scaleIn 0.2s ease;
-}
+    30% {
+      opacity: 1;
+    }
 
-.animate-shimmer {
-  background: linear-gradient(90deg, var(--color-muted) 25%, var(--color-border) 50%, var(--color-muted) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-}
+    45% {
+      opacity: 0;
+    }
 
-/* === 代码高亮（GitHub Dark 风格，配 rehype-highlight；两种主题下代码块均保持深色） === */
-pre code.hljs {
-  display: block;
-  overflow-x: auto;
-  padding: 1rem;
-  background: #0d1117;
-  color: #c9d1d9;
-  border-radius: 0 0 0.5rem 0.5rem;
-  border: 1px solid var(--color-border);
-  border-top: none;
-}
+    60% {
+      opacity: 1;
+    }
 
-code.hljs {
-  padding: 3px 5px;
-}
-
-.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-section, .hljs-link { color: #ff7b72; }
-.hljs-title, .hljs-title.function_, .hljs-title.class_ { color: #d2a8ff; }
-.hljs-string, .hljs-meta .hljs-string { color: #a5d6ff; }
-.hljs-number, .hljs-symbol, .hljs-bullet { color: #79c0ff; }
-.hljs-variable, .hljs-template-variable, .hljs-attr, .hljs-attribute { color: #79c0ff; }
-.hljs-type, .hljs-built_in, .hljs-params { color: #ffa657; }
-.hljs-comment, .hljs-quote, .hljs-meta { color: #8b949e; font-style: italic; }
-.hljs-tag, .hljs-name { color: #7ee787; }
-.hljs-operator { color: #ff7b72; }
-.hljs-regexp { color: #a5d6ff; }
-.hljs-selector-class, .hljs-selector-id { color: #7ee787; }
-.hljs-emphasis { font-style: italic; }
-.hljs-strong { font-weight: bold; }
-.hljs-addition { color: #aff5b4; background-color: rgba(46, 160, 67, 0.15); }
-.hljs-deletion { color: #ffdcd7; background-color: rgba(248, 81, 73, 0.15); }
-
-/* === Markdown 正文（react-markdown 容器加 .prose） === */
-.prose pre {
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  border: none;
-}
-
-.prose p {
-  white-space: pre-wrap;
-}
-
-.prose code:not(pre code) {
-  background: var(--color-muted);
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  font-size: 0.875em;
-  font-weight: 500;
-}
-
-.prose a {
-  color: var(--color-link);
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
-  text-decoration-thickness: 1px;
-  transition: opacity 0.2s;
-}
-
-.prose a:hover {
-  opacity: 0.7;
+    100% {
+      opacity: 1;
+    }
+  }
 }

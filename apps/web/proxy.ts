@@ -13,6 +13,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // 放行：登录页、全部 /api（401 由 Hono 守卫返回 JSON，页面才适合 307）、Next 内部资源与静态文件。
-  matcher: ["/((?!login|api|_next|favicon.ico|images).*)"],
+  // 放行：登录页、全部 /api（401 由 Hono 守卫返回 JSON，页面才适合 307）、Next 内部资源，
+  // 以及所有带扩展名的静态文件（favicon.ico、logo-*.svg、avatars/*.png 等 public 资源）。
+  matcher: ["/((?!login|api|_next|.*\\..+).*)"],
 };
