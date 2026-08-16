@@ -53,11 +53,13 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <Button aria-label="用户菜单" className="rounded-full" size="icon" variant="ghost">
           {user.avatarUrl ? (
+            // 小头像不走服务端图片优化器（本机代理 fake-ip 会触发 Next SSRF 拦截），浏览器直连 CDN。
             <Image
               alt={user.name}
               className="h-8 w-8 rounded-full"
               height={32}
               src={user.avatarUrl}
+              unoptimized
               width={32}
             />
           ) : (
