@@ -1,23 +1,29 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
-import { toggleTheme, useTheme } from "@/lib/theme";
 
-/** 浅色（默认）/ 深色切换：主题状态由 lib/theme.ts 统一管理（Toaster、命令面板共享订阅）。 */
+/* 水合完成后才按真实主题渲染图标（服务端快照固定 false → 占位 Moon），
+   用 useSyncExternalStore 而非 effect+setState（后者触发 cascading renders）。 */
+const emptySubscribe = () => () => {};
+
+/** 浅色/深色切换（next-themes）。 */
 export function ThemeToggle() {
-  const theme = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   return (
     <Button
       aria-label="切换主题"
       className="rounded-full"
-      onClick={() => toggleTheme(theme)}
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       size="icon"
       variant="ghost"
     >
-      {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      {mounted && resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </Button>
   );
 }

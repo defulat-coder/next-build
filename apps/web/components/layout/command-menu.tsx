@@ -1,14 +1,22 @@
 "use client";
 
-import { Command } from "cmdk";
-import { Moon, Search, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import type { Route } from "next";
+import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { NAV_ITEMS } from "@/components/layout/floating-sidebar";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { toggleTheme, useTheme } from "@/lib/theme";
+import {
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandShortcut,
+} from "@/components/ui/command";
 
 /** 输入控件聚焦时不拦截数字键等导航快捷键。 */
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -22,12 +30,12 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * ⌘K 命令面板骨架 + 1-4 数字键页面导航。
- * 面板内当前只承载页面跳转与主题切换，后续动作（新建任务等）往 Command.Item 里加。
+ * ⌘K 命令面板（shadcn 官方 command 组件）+ 1-4 数字键页面导航。
+ * 面板内当前只承载页面跳转与主题切换，后续动作（新建任务等）往 CommandItem 里加。
  */
 export function CommandMenu() {
   const router = useRouter();
-  const theme = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -54,72 +62,44 @@ export function CommandMenu() {
   };
 
   return (
-    <Dialog onOpenChange={setOpen} open={open}>
-      <DialogContent
-        className="top-[22%] translate-y-0 gap-0 overflow-hidden p-0 sm:max-w-md"
-        showCloseButton={false}
-      >
-        <DialogTitle className="sr-only">命令面板</DialogTitle>
-        <Command label="命令面板" loop>
-          <div className="flex items-center gap-2 border-b px-3">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <Command.Input
-              className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              placeholder="跳转页面或执行命令…"
-            />
-            <kbd className="rounded-md border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-              esc
-            </kbd>
-          </div>
-          <Command.List className="max-h-72 overflow-y-auto p-1.5">
-            <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
-              没有匹配的命令
-            </Command.Empty>
-            <Command.Group
-              className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
-              heading="页面"
+    <CommandDialog
+      description="跳转页面或执行命令"
+      onOpenChange={setOpen}
+      open={open}
+      title="命令面板"
+    >
+      {/* radix-nova 版 CommandDialog 不内置 <Command> 根（cmdk 的 store context 由它提供），
+          缺了会让 CommandInput 读不到 store 直接崩溃，必须自行组合。 */}
+      <Command loop>
+        <CommandInput placeholder="跳转页面或执行命令…" />
+        <CommandList>
+          <CommandEmpty>没有匹配的命令</CommandEmpty>
+          <CommandGroup heading="页面">
+            {NAV_ITEMS.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <CommandItem key={item.href} onSelect={() => go(item.href)} value={item.label}>
+                  <Icon />
+                  {item.label}
+                  <CommandShortcut>{index + 1}</CommandShortcut>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+          <CommandGroup heading="偏好">
+            <CommandItem
+              onSelect={() => {
+                setOpen(false);
+                setTheme(resolvedTheme === "dark" ? "light" : "dark");
+              }}
+              value="切换主题"
             >
-              {NAV_ITEMS.map((item, index) => {
-                const Icon = item.icon;
-                return (
-                  <Command.Item
-                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground select-none data-[selected=true]:bg-accent"
-                    key={item.href}
-                    onSelect={() => go(item.href)}
-                    value={item.label}
-                  >
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                    {item.label}
-                    <kbd className="ml-auto rounded-md border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                      {index + 1}
-                    </kbd>
-                  </Command.Item>
-                );
-              })}
-            </Command.Group>
-            <Command.Group
-              className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
-              heading="偏好"
-            >
-              <Command.Item
-                className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground select-none data-[selected=true]:bg-accent"
-                onSelect={() => {
-                  setOpen(false);
-                  toggleTheme(theme);
-                }}
-                value="切换主题"
-              >
-                {theme === "dark" ? (
-                  <Sun className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Moon className="h-4 w-4 text-muted-foreground" />
-                )}
-                切换为{theme === "dark" ? "浅色" : "深色"}主题
-              </Command.Item>
-            </Command.Group>
-          </Command.List>
-        </Command>
-      </DialogContent>
-    </Dialog>
+              {resolvedTheme === "dark" ? <Sun /> : <Moon />}
+              切换为{resolvedTheme === "dark" ? "浅色" : "深色"}主题
+            </CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </CommandDialog>
   );
 }

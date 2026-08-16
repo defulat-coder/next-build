@@ -12,28 +12,30 @@
    ============================================ */
 
 @theme {
-  /* 背景层级 */
+  /* 背景层级（Linear 浅色系：白底 + 近白灰次级底） */
   --color-background: #ffffff;
-  --color-background-secondary: #f5f5f5;
+  --color-background-secondary: #f7f7f8;
   --color-foreground: #1c1c1e;
   --color-card: #ffffff;
   --color-card-foreground: #1c1c1e;
   --color-popover: #ffffff;
   --color-popover-foreground: #1c1c1e;
 
-  /* 主强调：靛蓝（开发者工具安全区）——active 导航 / 主按钮 / 链接 / 徽标 / 焦点环。
-     浅色 #4f46e5：白字其上 6.29:1，落在白底 6.29:1，均过 WCAG AA 正文线。
+  /* 主强调：Linear 品牌靛蓝同色系。品牌原值 #5e6ad2 在白底仅 4.70:1、
+     在次级灰底 4.39、在自身 tint 徽标底 4.15（不达 AA 正文线），
+     故同色相微调暗一档为 #5660c8：白底 5.38 / 灰底 5.03 / tint 底 4.70 全过。
+     落在 active 导航 / 主按钮 / 链接 / 徽标 / 焦点环。
      注意：--color-accent 保留 shadcn 惯例的灰阶 hover 底语义，不做强调色。 */
-  --color-primary: #4f46e5;
+  --color-primary: #5660c8;
   --color-primary-foreground: #ffffff;
-  --color-link: #4f46e5;
+  --color-link: #5660c8;
 
   /* 次要层级 */
-  --color-secondary: #f5f5f5;
-  --color-secondary-foreground: #656568;
-  --color-muted: #f2f2f2;
-  --color-muted-foreground: #656568;
-  --color-accent: #f2f2f2;
+  --color-secondary: #f7f7f8;
+  --color-secondary-foreground: #6b6f76;
+  --color-muted: #f2f2f4;
+  --color-muted-foreground: #6b6f76;
+  --color-accent: #f2f2f4;
   --color-accent-foreground: #1c1c1e;
   --color-hover: rgba(0, 0, 0, 0.03);
 
@@ -50,13 +52,13 @@
   --color-destructive-bg: rgba(229, 72, 77, 0.1);
   --color-info-bg: rgba(0, 145, 255, 0.1);
 
-  /* 边框 / 输入 / 焦点环（边框需肉眼可见，勿浅于 #e2e2e2；输入框边框需 ≥1.5:1，勿浅于 #d4d4d4） */
-  --color-border: #e2e2e2;
+  /* 边框 / 输入 / 焦点环（Linear 浅色边框档；输入框边框需 ≥1.5:1，勿浅于 #d4d4d4） */
+  --color-border: #e4e5e9;
   --color-input: #d4d4d4;
-  --color-ring: #4f46e5;
+  --color-ring: #5660c8;
 
-  /* 卡片 hover 阴影：有偏移 + 柔 blur（深色主题在下方覆盖） */
-  --shadow-card: 0 1px 2px rgb(28 28 30 / 0.05), 0 12px 32px -8px rgb(28 28 30 / 0.12);
+  /* 卡片 hover 阴影：强调色相 tint + 偏移 + 柔 blur（深色主题在下方覆盖） */
+  --shadow-card: 0 1px 2px rgb(86 96 200 / 0.06), 0 12px 32px -8px rgb(86 96 200 / 0.14);
 
   /* 字体：SF Pro 系统栈 */
   --font-sans: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
@@ -71,39 +73,41 @@
   --radius-2xl: 9999px;
 }
 
-/* === 深色主题（personal-sites 中性灰，非黑蓝） === */
+/* === 深色主题（Linear 深色：近黑底 #08090a + 低亮度浮起面 + 极低透明度边框） === */
 html[data-theme="dark"] {
   color-scheme: dark;
 
-  --color-background: #181818;
-  /* 深色下二级层比背景更深（ recessed well ），浅色卡片浮其上 */
-  --color-background-secondary: #121212;
-  --color-foreground: #f4f4f4;
-  --color-card: #1e1e1e;
-  --color-card-foreground: #f4f4f4;
-  --color-popover: #242424;
-  --color-popover-foreground: #f4f4f4;
+  --color-background: #08090a;
+  /* 深色下二级层比背景更深（recessed well），浅色卡片浮其上 */
+  --color-background-secondary: #050607;
+  --color-foreground: #f7f8f8;
+  --color-card: #101214;
+  --color-card-foreground: #f7f8f8;
+  --color-popover: #16181a;
+  --color-popover-foreground: #f7f8f8;
 
-  /* 深色强调：亮靛蓝。深底上 5.95:1（正文 AA），深字其上 5.95:1 */
-  --color-primary: #818cf8;
-  --color-primary-foreground: #181818;
-  --color-link: #818cf8;
+  /* 深色强调：Linear 靛蓝调亮。#6e79d6 在 tint 徽标底上仅 4.08（不达标），
+     微调亮一档为 #7a85dd：深底 5.91 / 卡片底 ~5.8 / 15% tint 底 4.62 全过；
+     主按钮深字其上 5.91:1。 */
+  --color-primary: #7a85dd;
+  --color-primary-foreground: #08090a;
+  --color-link: #7a85dd;
 
-  --color-secondary: #242424;
-  --color-secondary-foreground: #999999;
-  --color-muted: #242424;
-  --color-muted-foreground: #999999;
-  --color-accent: #242424;
-  --color-accent-foreground: #f4f4f4;
-  --color-hover: rgba(255, 255, 255, 0.04);
+  --color-secondary: #16181a;
+  --color-secondary-foreground: #9b9ea5;
+  --color-muted: #16181a;
+  --color-muted-foreground: #9b9ea5;
+  --color-accent: #1c1f24;
+  --color-accent-foreground: #f7f8f8;
+  --color-hover: rgba(255, 255, 255, 0.06);
 
   --color-destructive: #f2555a;
-  --color-destructive-foreground: #181818;
+  --color-destructive-foreground: #08090a;
   --color-destructive-text: #ff8589;
 
-  --color-border: #3a3a3a;
-  --color-input: #4a4a4a;
-  --color-ring: #818cf8;
+  --color-border: #23262b;
+  --color-input: #2e3238;
+  --color-ring: #7a85dd;
 
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px -8px rgb(0 0 0 / 0.6);
 }

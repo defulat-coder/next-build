@@ -1,25 +1,53 @@
-"use client";
+"use client"
 
-import { Toaster as SonnerToaster, type ToasterProps } from "sonner";
+import { useTheme } from "next-themes"
+import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
-import { useTheme } from "@/lib/theme";
-
-/** shadcn 标准接法：sonner Toaster 跟随 <html data-theme>（手动主题机制，非系统 media query）。 */
-function Toaster(props: ToasterProps) {
-  const theme = useTheme();
+const Toaster = ({ ...props }: ToasterProps) => {
+  // 用 resolvedTheme 而非 theme：本项目深色由 html[data-theme] 驱动，
+  // sonner 的 "system" 模式走 media query，手动切换时会与页面主题脱钩。
+  const { resolvedTheme = "light" } = useTheme()
 
   return (
-    <SonnerToaster
-      position="bottom-right"
-      theme={theme}
+    <Sonner
+      theme={resolvedTheme as ToasterProps["theme"]}
+      className="toaster group"
+      icons={{
+        success: (
+          <CircleCheckIcon className="size-4" />
+        ),
+        info: (
+          <InfoIcon className="size-4" />
+        ),
+        warning: (
+          <TriangleAlertIcon className="size-4" />
+        ),
+        error: (
+          <OctagonXIcon className="size-4" />
+        ),
+        loading: (
+          <Loader2Icon className="size-4 animate-spin" />
+        ),
+      }}
+      // 官方模板引用的是 shadcn 默认 --popover/--border/--radius 变量；
+      // 本项目 token 走 Tailwind v4 @theme 的 --color-* 命名，这里做对应映射。
+      style={
+        {
+          "--normal-bg": "var(--color-popover)",
+          "--normal-text": "var(--color-popover-foreground)",
+          "--normal-border": "var(--color-border)",
+          "--border-radius": "var(--radius-md)",
+        } as React.CSSProperties
+      }
       toastOptions={{
         classNames: {
-          toast: "rounded-xl border-border bg-popover text-popover-foreground shadow-lg",
+          toast: "cn-toast",
         },
       }}
       {...props}
     />
-  );
+  )
 }
 
-export { Toaster };
+export { Toaster }

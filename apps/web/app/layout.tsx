@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ThemeProvider } from "next-themes";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,18 +19,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <head>
-        <script
-          // 首帧绘制前恢复主题（localStorage 优先，否则跟随系统），避免深色用户首帧白屏。
-          dangerouslySetInnerHTML={{
-            __html:
-              'try{var t=window.localStorage.getItem("theme");if(t!=="light"&&t!=="dark")t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch{}',
-          }}
-        />
-      </head>
       <body>
-        <TooltipProvider>{children}</TooltipProvider>
-        <Toaster />
+        {/*
+          next-themes 官方主题方案（shadcn 标准）：attribute="data-theme" 与
+          globals.css 的 html[data-theme="dark"] token 选择器兼容；自带防闪烁内联脚本，
+          localStorage key 为 "theme"（与旧机制一致，用户存量偏好无损迁移）。
+        */}
+        <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+          <TooltipProvider>{children}</TooltipProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );
