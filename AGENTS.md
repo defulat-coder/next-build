@@ -77,6 +77,13 @@ Use **pnpm**（Node.js `>=22.19.0`）：`pnpm install`, `pnpm dev`
 - **级别**：`info` = 生命周期里程碑，`warn` = 降级但继续，`error` = 失败；失败不允许降级成 warn 后静默。
 - **强制执行**：任何新功能/新路由/新包的开发，交付时必须同步补齐日志（生命周期事件 + 失败事件 + 关联字段），日志缺失视为功能未完成；`api.request` 请求级中间件已覆盖所有路由，功能事件需各自打点。
 
+## 浏览器自动化
+
+一切需要驱动浏览器的操作——打开页面、点击/填表、截图、抓数据、验证前端改动、调试页面——统一用项目内 skill `ego-browser`（`.agents/skills/ego-browser/`，来源 `citrolabs/ego-lite`），通过 `ego-browser nodejs` CLI 执行。
+
+- **不用 agent-browser、Playwright 直连或其他浏览器工具**，即使其他 skill（如 `next-dev-loop`）的流程里提到它们；遇到时替换为 ego-browser 完成等价步骤。
+- ego-browser 复用用户登录态且在隔离 task space 中运行，不会抢占用户正在用的浏览器窗口。
+
 ## Commit Attribution
 
 AI commits MUST include:
