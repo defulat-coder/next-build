@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 /** 飞书 OAuth 登录的用户，每人一条记录。 */
 export const users = sqliteTable("users", {
@@ -45,4 +45,63 @@ export const projectRepos = sqliteTable(
     addedAt: integer("added_at", { mode: "timestamp_ms" }).notNull(),
   },
   (table) => [uniqueIndex("project_repos_project_repo_unique").on(table.projectId, table.repo)],
+);
+
+// ---------- IAM（RBAC，docs/architecture-rbac-menu.md §2） ----------
+
+/** 角色：内置角色 built_in=true 不可删；code 如 site:admin / project:owner。 */
+export const roles = sqliteTable("roles", {
+  id: text("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  scope: text("scope", { enum: ["site", "project"] }).notNull(),
+  name: text("name").notNull(),
+  builtIn: integer("built_in", { mode: "boolean" }).notNull(),
+});
+
+/** 权限码：与代码常量表（permissions.ts）对齐，启动时种子同步。 */
+export const permissions = sqliteTable("permissions", {
+  code: text("code").primaryKey(),
+  description: text("description").notNull(),
+});
+
+/** 角色-权限映射：随角色/权限级联删除。 */
+export const rolePermissions = sqliteTable(
+  "role_permissions",
+  {
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    permissionCode: text("permission_code")
+      .notNull()
+      .references(() => permissions.code, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.roleId, table.permissionCode] })],
+);
+
+/** 用户-整站角色：一人一个整站角色（user_id 主键即唯一约束）。 */
+export const userSiteRoles = sqliteTable("user_site_roles", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id),
+  roleId: text("role_id")
+    .notNull()
+    .references(() => roles.id),
+});
+
+/** 项目成员（含项目角色）：权限判定以此表为准，不看 projects.created_by。 */
+export const projectMembers = sqliteTable(
+  "project_members",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roles.id),
+    addedAt: integer("added_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.userId] })],
 );

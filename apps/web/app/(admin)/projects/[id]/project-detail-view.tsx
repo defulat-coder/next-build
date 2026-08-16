@@ -132,7 +132,7 @@ function RepoSection({
   return (
     <section>
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-lg font-semibold">仓库（{repos.length}）</h3>
+        <h3 className="text-base font-semibold">仓库（{repos.length}）</h3>
         <AddRepoDialog projectId={projectId} onAdded={onChanged} />
       </div>
 
@@ -184,7 +184,7 @@ function RepoRow({
   }
 
   return (
-    <li className="rounded-xl border p-4">
+    <li className="rounded-xl border p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-3">
           <span className="truncate font-mono text-sm font-medium">{repo.repo}</span>

@@ -1,6 +1,8 @@
 import { err, ok, type Result } from "@next-build/result";
 import type { Logger } from "@next-build/db";
 
+import { checkProjectPermission } from "@/server/application/iam/check-project-permission";
+import type { ActorContext } from "@/server/domains/iam/model";
 import type { ProjectError } from "@/server/domains/project/errors";
 import { projectErrorFromStore } from "@/server/domains/project/errors";
 import type { ProjectRepo } from "@/server/domains/project/model";
@@ -8,6 +10,7 @@ import type { GitHubGateway, ProjectStore } from "@/server/domains/project/ports
 
 /**
  * 用例：给项目添加仓库（事务脚本）。先经 GitHub 校验存在性与可访问性（并取默认分支），再入库。
+ * 项目级判定在用例内做：repo:manage（admin 或项目 owner）。
  * 失败日志在此打点（project.failed：业务异常 warn、系统异常 error；err 带堆栈，不记录 token）。
  */
 export function createAddRepo(deps: { projectStore: ProjectStore; gateway: GitHubGateway; logger: Logger }) {
@@ -25,12 +28,15 @@ export function createAddRepo(deps: { projectStore: ProjectStore; gateway: GitHu
     return err(error);
   };
 
-  return async (input: { projectId: string; repo: string; userId: string }): Promise<Result<ProjectRepo, ProjectError>> => {
+  return async (input: { actor: ActorContext; projectId: string; repo: string }): Promise<Result<ProjectRepo, ProjectError>> => {
     const existing = await deps.projectStore.getProject(input.projectId);
     if (!existing.ok) return logFailure(projectErrorFromStore(existing.error), input.projectId);
     if (!existing.value) {
       return logFailure({ code: "PROJECT_NOT_FOUND", kind: "business", message: "项目不存在" }, input.projectId);
     }
+
+    const allowed = checkProjectPermission(input.actor, input.projectId, "repo:manage", deps.logger);
+    if (!allowed.ok) return allowed;
 
     const checked = await deps.gateway.checkRepo(input.repo);
     if (!checked.ok) return logFailure(checked.error, input.projectId);
@@ -43,7 +49,7 @@ export function createAddRepo(deps: { projectStore: ProjectStore; gateway: GitHu
     if (!added.ok) return logFailure(projectErrorFromStore(added.error), input.projectId);
 
     deps.logger.info(
-      { event: "project.repo_added", project_id: input.projectId, repo: added.value.repo, user_id: input.userId },
+      { event: "project.repo_added", project_id: input.projectId, repo: added.value.repo, user_id: input.actor.userId },
       "仓库添加到项目",
     );
     return ok(added.value);

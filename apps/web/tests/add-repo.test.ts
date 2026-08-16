@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { err, ok } from "@next-build/result";
 
 import { createAddRepo } from "@/server/application/project/add-repo";
+import type { ActorContext } from "@/server/domains/iam/model";
 import type { ProjectError } from "@/server/domains/project/errors";
 import type { GitHubGateway, ProjectStore } from "@/server/domains/project/ports";
 
@@ -14,7 +15,18 @@ const project = {
   name: "demo",
   updatedAt: new Date("2026-01-01"),
 };
-const input = { projectId: "p-1", repo: "octocat/hello-world", userId: "u-1" };
+
+/** 项目 owner 操作者（repo:manage 判定放行）。 */
+const actor: ActorContext = {
+  permissions: {
+    projects: [{ permissions: ["repo:manage"], projectId: "p-1", role: "project:owner" }],
+    sitePermissions: [],
+    siteRole: null,
+    userId: "u-1",
+  },
+  userId: "u-1",
+};
+const input = { actor, projectId: "p-1", repo: "octocat/hello-world" };
 
 function makeDeps() {
   const projectStore: ProjectStore = {

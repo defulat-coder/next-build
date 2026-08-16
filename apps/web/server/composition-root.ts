@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { createAuthStore, createDb, createProjectStore } from "@next-build/db";
+import { createAuthStore, createDb, createIamStore, createProjectStore, seedIam } from "@next-build/db";
 
 import { getFeishuEnv, getGitHubEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
@@ -22,7 +22,11 @@ const db = createDb({
   migrationsFolder: path.join(process.cwd(), "node_modules", "@next-build", "db", "drizzle"),
 });
 
+// IAM 种子与既有数据迁移（幂等）：内置角色/权限/映射对齐常量表，users/projects 回填（docs/architecture-rbac-menu.md §7）。
+seedIam(db, { logger: dbLogger });
+
 export const authStore = createAuthStore(db, { logger: dbLogger });
+export const iamStore = createIamStore(db, { logger: dbLogger });
 export const projectStore = createProjectStore(db, { logger: dbLogger });
 
 /** 飞书网关：凭证按请求惰性读取（lib/env.ts「谁用谁校验」），缺失即抛错由 onError 兜底。 */

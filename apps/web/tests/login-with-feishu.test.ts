@@ -5,6 +5,7 @@ import { err, ok } from "@next-build/result";
 import { createLoginWithFeishu } from "@/server/application/auth/login-with-feishu";
 import type { AuthError } from "@/server/domains/auth/errors";
 import type { AuthStore, FeishuGateway } from "@/server/domains/auth/ports";
+import type { IamStore } from "@/server/domains/iam/ports";
 
 const user = { avatarUrl: null, feishuOpenId: "ou_1", id: "u-1", name: "张三" };
 const input = { code: "auth-code", redirectUri: "http://127.0.0.1:3000/api/auth/feishu/callback" };
@@ -33,8 +34,24 @@ function makeDeps() {
       return ok(user);
     }),
   };
+  const iamStore: IamStore = {
+    assignSiteRole: vi.fn(async () => ok(undefined)),
+    ensureSiteRole: vi.fn(async () => {
+      calls.push("ensureSiteRole");
+      return ok("site:admin" as const);
+    }),
+    getPermissionsForUser: vi.fn(),
+    getProjectRole: vi.fn(),
+    getSiteRole: vi.fn(),
+    listProjectMembers: vi.fn(),
+    listRolesWithPermissions: vi.fn(),
+    listUsersWithRoles: vi.fn(),
+    removeProjectMember: vi.fn(),
+    setRolePermissions: vi.fn(),
+    upsertProjectMember: vi.fn(),
+  };
   const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn() };
-  return { authStore, calls, gateway, logger };
+  return { authStore, calls, gateway, iamStore, logger };
 }
 
 describe("loginWithFeishu", () => {
@@ -45,7 +62,7 @@ describe("loginWithFeishu", () => {
     const result = await loginWithFeishu(input);
 
     expect(result).toEqual({ ok: true, value: { sessionToken: "session-token", user } });
-    expect(deps.calls).toEqual(["exchangeCode", "getUserInfo", "upsertUser", "createSession"]);
+    expect(deps.calls).toEqual(["exchangeCode", "getUserInfo", "upsertUser", "ensureSiteRole", "createSession"]);
     expect(deps.gateway.exchangeCode).toHaveBeenCalledWith(input);
     expect(deps.authStore.upsertUser).toHaveBeenCalledWith({
       avatarUrl: undefined,

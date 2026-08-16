@@ -6,6 +6,7 @@ import * as React from "react";
 import { NavGroup } from "@/components/layout/nav-group";
 import { NavUser } from "@/components/layout/nav-user";
 import { Logo } from "@/components/logo";
+import { usePermissions } from "@/components/permissions-provider";
 import { useSearch } from "@/components/search-provider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -20,7 +21,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { sidebarData } from "@/data/sidebar-data";
+import { getVisibleNavGroups } from "@/data/sidebar-data";
 import { site } from "@/data/site";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +50,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [isMounted, setIsMounted] = React.useState(false);
   const { state } = useSidebar();
   const { setOpen: setCommandOpen } = useSearch();
+  const { hasPermission } = usePermissions();
+  const navGroups = getVisibleNavGroups(hasPermission);
 
   React.useEffect(() => {
     setIsMounted(true);
@@ -91,7 +94,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroup>
-          {sidebarData.navGroups.map((props) => (
+          {navGroups.map((props) => (
             <NavGroup key={props.title} {...props} />
           ))}
         </ScrollArea>

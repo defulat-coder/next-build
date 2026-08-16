@@ -48,6 +48,27 @@ export { createAuthStore } from "./auth-store";
 export type { AuthStore, AuthUser, DbError, FeishuUserProfile } from "./auth-store";
 export { createDb } from "./client";
 export type { Db } from "./client";
+export { seedIam } from "./iam-seed";
+export { createIamStore } from "./iam-store";
+export type {
+  IamStore,
+  ProjectMember,
+  ProjectPermissions,
+  Role,
+  RoleWithPermissions,
+  UserPermissions,
+  UserWithRoles,
+} from "./iam-store";
 export type { Logger } from "./logger";
+// 权限码常量主子路径双导出；前端用纯 TS 子路径 `@next-build/db/permissions`，避免连带 better-sqlite3。
+export {
+  BUILTIN_ROLES,
+  PERMISSION_CODES,
+  PERMISSIONS,
+  PROJECT_ROLE_CODES,
+  ROLE_PERMISSIONS,
+  SITE_ROLE_CODES,
+} from "./permissions";
+export type { PermissionCode, ProjectRoleCode, RoleCode, SiteRoleCode } from "./permissions";
 export { createProjectStore } from "./project-store";
 export type { Project, ProjectRepo, ProjectRepoExistsError, ProjectStore, ProjectSummary } from "./project-store";

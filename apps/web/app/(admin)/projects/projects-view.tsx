@@ -5,6 +5,7 @@ import Link from "next/link";
 import * as React from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { usePermissions } from "@/components/permissions-provider";
 import { Button } from "@/components/ui/button";
 import { readApiError } from "@/lib/api-error";
 import {
@@ -39,6 +40,7 @@ interface ProjectSummaryDto {
 export function ProjectsView() {
   const [projects, setProjects] = React.useState<ProjectSummaryDto[] | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const { hasPermission } = usePermissions();
 
   const load = React.useCallback(async () => {
     setLoadError(null);
@@ -63,7 +65,7 @@ export function ProjectsView() {
       <PageHeader
         title="项目"
         description="项目是仓库的容器，任务与 Wiki 的归属单位。"
-        actions={<CreateProjectDialog onCreated={load} />}
+        actions={hasPermission("project:create") ? <CreateProjectDialog onCreated={load} /> : undefined}
       />
 
       {loadError ? (

@@ -12,6 +12,7 @@
 | Wiki 工作区 | 支撑域 | 围绕仓库的知识沉淀 |
 | Ask AI | 支撑域 | 检索问答 |
 | 认证（Auth） | 通用域 | 飞书登录、会话——现成模式，不产生差异化 |
+| 权限（IAM） | 通用域 | 整站 + 项目两级 RBAC 授权、项目成员——设计见 `docs/architecture-rbac-menu.md` |
 
 ## 业务逻辑模式选择
 
@@ -29,12 +30,14 @@ apps/web/server/
       model.ts               # AuthUser 等核心概念（统一语言的载体）
       errors.ts              # AuthError 判别联合（带 kind: business/system）
       ports.ts               # 本上下文消费的端口签名（引用 packages 窄接口）
+    iam/                     # 授权上下文（RBAC）：Role/Permission/ProjectMember、IamError、IamStore 端口
     project/                 # 同上：Project/ProjectRepo、ProjectError、ProjectStore/GitHubGateway
   application/               # 应用层：用例（事务脚本）
     auth/
       login-with-feishu.ts   # 编排：换 token → 取资料 → upsertUser → 建会话
       logout.ts
       get-current-user.ts
+    iam/                     # get-my-permissions / list-users / assign-site-role / project-member 增删改 / list-roles / update-role-permissions
     project/                 # create-project / list-projects / get-project / delete-project / add-repo / remove-repo
   infrastructure/            # 基础设施：外部世界适配器
     gateways/feishu-client.ts

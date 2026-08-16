@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { err, ok } from "@next-build/result";
 
 import { createUpdateProject } from "@/server/application/project/update-project";
+import type { ActorContext } from "@/server/domains/iam/model";
 import type { ProjectStore } from "@/server/domains/project/ports";
 
 const project = {
@@ -12,6 +13,17 @@ const project = {
   id: "p-1",
   name: "demo",
   updatedAt: new Date("2026-01-01"),
+};
+
+/** 项目 owner 操作者（project:update 判定放行）。 */
+const actor: ActorContext = {
+  permissions: {
+    projects: [{ permissions: ["project:update"], projectId: "p-1", role: "project:owner" }],
+    sitePermissions: [],
+    siteRole: null,
+    userId: "u-1",
+  },
+  userId: "u-1",
 };
 
 function makeDeps() {
@@ -35,7 +47,7 @@ describe("updateProject", () => {
     const deps = makeDeps();
     const updateProject = createUpdateProject(deps);
 
-    const result = await updateProject({ description: "新描述", id: "p-1", name: "demo-2", userId: "u-1" });
+    const result = await updateProject({ actor, description: "新描述", id: "p-1", name: "demo-2" });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -53,10 +65,11 @@ describe("updateProject", () => {
 
   it("项目不存在时返回业务错误 PROJECT_NOT_FOUND", async () => {
     const deps = makeDeps();
-    vi.mocked(deps.projectStore.updateProject).mockResolvedValue(ok(null));
+    // 用例先查存在性再判权限：getProject 返回 null 即 PROJECT_NOT_FOUND。
+    vi.mocked(deps.projectStore.getProject).mockResolvedValue(ok(null));
     const updateProject = createUpdateProject(deps);
 
-    const result = await updateProject({ id: "no-such", name: "x", userId: "u-1" });
+    const result = await updateProject({ actor, id: "no-such", name: "x" });
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -72,7 +85,7 @@ describe("updateProject", () => {
     );
     const updateProject = createUpdateProject(deps);
 
-    const result = await updateProject({ id: "p-1", name: "x", userId: "u-1" });
+    const result = await updateProject({ actor, id: "p-1", name: "x" });
 
     expect(result.ok).toBe(false);
     if (result.ok) return;

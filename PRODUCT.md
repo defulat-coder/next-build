@@ -10,7 +10,7 @@ web
 
 ## Users
 
-内部小团队的开发者：飞书 OAuth 登录，每人一条用户记录；共用一套部署，不做角色权限。各自在仓库上创建任务、生成 Wiki、向代码提问。
+内部小团队的开发者：飞书 OAuth 登录，每人一条用户记录；共用一套部署，做两级 RBAC 角色权限（整站级 admin/member + 项目级 owner/member/viewer），设计见 `docs/architecture-rbac-menu.md`。各自在仓库上创建任务、生成 Wiki、向代码提问。
 
 ## Product Purpose
 
@@ -144,4 +144,4 @@ web
 - ~~Wiki 的「工作区」概念~~ → 已定：工作区即项目的仓库集；项目（仓库组，1:N）是任务与 Wiki 的归属单位，项目管理（项目 CRUD + 仓库配置 + GitHub 校验）先行落地，任务选项目/Wiki 接 OpenWiki 是下一棒。
 - ~~Wiki 生成是调用 Z Read 外部服务还是自建管线~~ → 已定：OpenWiki CLI。待验证：OpenWiki 对多仓库工作区的支持方式（可能需按仓库分别生成再合并）。
 - ~~任务工作区的存放位置与并发隔离策略~~ → 已定：microsandbox 本地/自托管沙箱，任务间以独立 microVM 隔离；Vercel 部署方案搁置。
-- ~~是否需要多用户与权限体系~~ → 已定：飞书 OAuth 登录，每个登录人创建一条用户记录，整站保护（除 /login 与 OAuth 回调外页面和 API 都要求登录）；共用一套部署，不做角色权限。
+- ~~是否需要多用户与权限体系~~ → 已定：飞书 OAuth 登录，每个登录人创建一条用户记录，整站保护（除 /login 与 OAuth 回调外页面和 API 都要求登录）；共用一套部署，做**两级 RBAC**（整站级 + 项目级角色），菜单按权限码过滤，完整设计见 `docs/architecture-rbac-menu.md`。

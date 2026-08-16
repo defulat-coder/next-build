@@ -15,6 +15,20 @@
       "when": 1786840832837,
       "tag": "0001_lonely_shiver_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786873091237,
+      "tag": "0002_broken_tombstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1786877654683,
+      "tag": "0003_promote-members-to-admin",
+      "breakpoints": true
     }
   ]
 }

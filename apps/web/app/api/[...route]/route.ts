@@ -4,11 +4,12 @@ import { Hono } from "hono";
 import { handle } from "hono/vercel";
 
 import { logger } from "@/lib/logger";
-import { authGuard } from "@/server/interface/http/auth-guard";
+import { authGuard, type AuthVariables } from "@/server/interface/http/auth-guard";
 import { authRoutes } from "@/server/interface/http/auth.routes";
+import { iamRoutes } from "@/server/interface/http/iam.routes";
 import { projectRoutes } from "@/server/interface/http/project.routes";
 
-const app = new Hono<{ Variables: { requestId: string } }>().basePath("/api");
+const app = new Hono<{ Variables: AuthVariables }>().basePath("/api");
 
 // 请求完成事件：每个请求一条（request_id + 路由模板 + 状态码 + 耗时）。
 // 用 routePath 而非原始 path——路径里的 id 会把日志标签打成无限基数（AGENTS.md「日志」）。
@@ -46,6 +47,8 @@ app.use("*", authGuard);
 app.get("/health", (c) => c.json({ ok: true }));
 app.route("/auth", authRoutes);
 app.route("/projects", projectRoutes);
+// /me/permissions、/admin/users、/projects/:id/members 同挂一处（路径互不重叠，Hono 按注册匹配）。
+app.route("/", iamRoutes);
 
 export const GET = handle(app);
 export const POST = handle(app);

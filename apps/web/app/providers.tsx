@@ -3,6 +3,7 @@
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { useEffect, useState } from "react";
 
+import { PermissionsProvider } from "@/components/permissions-provider";
 import SearchProvider from "@/components/search-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -32,7 +33,9 @@ export function Providers({ children }: Props) {
       disableTransitionOnChange
     >
       <NuqsAdapter>
-        <SearchProvider value={{ open, setOpen }}>{children}</SearchProvider>
+        <PermissionsProvider>
+          <SearchProvider value={{ open, setOpen }}>{children}</SearchProvider>
+        </PermissionsProvider>
       </NuqsAdapter>
     </ThemeProvider>
   );

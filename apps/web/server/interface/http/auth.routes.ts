@@ -8,7 +8,7 @@ import { logger } from "@/lib/logger";
 import { createGetCurrentUser } from "@/server/application/auth/get-current-user";
 import { createLoginWithFeishu } from "@/server/application/auth/login-with-feishu";
 import { createLogout } from "@/server/application/auth/logout";
-import { authStore, getFeishuGateway } from "@/server/composition-root";
+import { authStore, getFeishuGateway, iamStore } from "@/server/composition-root";
 import { buildAuthorizeUrl, checkState } from "@/server/infrastructure/gateways/feishu-client";
 
 import { OAUTH_STATE_COOKIE, OAUTH_STATE_TTL_SECONDS, SESSION_COOKIE, SESSION_TTL_MS } from "./cookies";
@@ -50,6 +50,7 @@ export const authRoutes = new Hono()
     const loginWithFeishu = createLoginWithFeishu({
       authStore,
       gateway: getFeishuGateway(),
+      iamStore,
       logger,
       sessionTtlMs: SESSION_TTL_MS,
     });

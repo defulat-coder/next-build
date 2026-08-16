@@ -4,6 +4,7 @@ import type { Logger } from "@next-build/db";
 import { authErrorFromDb, type AuthError } from "@/server/domains/auth/errors";
 import type { AuthUser } from "@/server/domains/auth/model";
 import type { AuthStore, FeishuGateway } from "@/server/domains/auth/ports";
+import type { IamStore } from "@/server/domains/iam/ports";
 
 export interface LoginWithFeishuInput {
   code: string;
@@ -17,12 +18,14 @@ export interface LoginWithFeishuOutput {
 
 /**
  * 用例：飞书登录（事务脚本）。编排 换 token → 取资料 → upsert 用户 → 建会话。
+ * 用户首次入库后按引导规则补整站角色（全库首个用户 admin，否则 member，docs/architecture-rbac-menu.md §2）。
  * 失败日志在此打点（auth.failed：业务异常 warn、系统异常 error；err 带堆栈，不记录 token/code），
  * 路由层只负责 state 校验、写 cookie 与重定向。
  */
 export function createLoginWithFeishu(deps: {
   authStore: AuthStore;
   gateway: FeishuGateway;
+  iamStore: IamStore;
   logger: Logger;
   sessionTtlMs: number;
 }) {
@@ -52,6 +55,10 @@ export function createLoginWithFeishu(deps: {
       name: profile.value.name,
     });
     if (!user.ok) return logFailure(authErrorFromDb(user.error));
+
+    // 引导规则：无整站角色时分配（幂等，已有角色则原样返回）。
+    const siteRole = await deps.iamStore.ensureSiteRole(user.value.id);
+    if (!siteRole.ok) return logFailure(authErrorFromDb(siteRole.error));
 
     const sessionToken = await deps.authStore.createSession(user.value.id, deps.sessionTtlMs);
     if (!sessionToken.ok) return logFailure(authErrorFromDb(sessionToken.error));
