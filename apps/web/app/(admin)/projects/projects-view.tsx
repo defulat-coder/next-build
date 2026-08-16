@@ -3,6 +3,7 @@
 import { FolderGit2, Plus } from "lucide-react";
 import * as React from "react";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -67,13 +68,11 @@ export function ProjectsView() {
 
   return (
     <>
-      <div className="mb-4 flex items-baseline justify-between gap-2">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">项目</h2>
-          <p className="text-muted-foreground">项目是仓库的容器，任务与 Wiki 的归属单位。</p>
-        </div>
-        <CreateProjectDialog onCreated={load} />
-      </div>
+      <PageHeader
+        title="项目"
+        description="项目是仓库的容器，任务与 Wiki 的归属单位。"
+        actions={<CreateProjectDialog onCreated={load} />}
+      />
 
       {loadError ? (
         <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-sm" role="alert">

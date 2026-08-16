@@ -44,7 +44,7 @@ export function NavGroup({ title, items }: NavGroup) {
                 >
                   <Link href={item.url as Route} onClick={() => setOpenMobile(false)}>
                     {item.icon && <item.icon />}
-                    <span>{item.title}</span>
+                    <span className="truncate">{item.title}</span>
                     {item.badge && <NavBadge>{item.badge}</NavBadge>}
                   </Link>
                 </SidebarMenuButton>
@@ -62,7 +62,7 @@ export function NavGroup({ title, items }: NavGroup) {
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton tooltip={item.title}>
                     {item.icon && <item.icon />}
-                    <span>{item.title}</span>
+                    <span className="truncate">{item.title}</span>
                     {item.badge && <NavBadge>{item.badge}</NavBadge>}
                     <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                   </SidebarMenuButton>
@@ -80,7 +80,7 @@ export function NavGroup({ title, items }: NavGroup) {
                             onClick={() => setOpenMobile(false)}
                           >
                             {subItem.icon && <subItem.icon />}
-                            <span>{subItem.title}</span>
+                            <span className="truncate">{subItem.title}</span>
                             {subItem.badge && (
                               <NavBadge>{subItem.badge}</NavBadge>
                             )}

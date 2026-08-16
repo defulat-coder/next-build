@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { useSearch } from "@/components/search-provider";
 import { Button } from "@/components/ui/button";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { site } from "@/data/site";
 import {
   breadcrumbTailFromPath,
@@ -98,6 +99,7 @@ export function SubHeader({
     >
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:gap-6">
         <div className="flex min-w-0 flex-wrap items-center gap-3 text-sm">
+          <SidebarTrigger className="size-8 shrink-0" />
           <span className="text-foreground font-medium">{site.title}</span>
           <span className="text-muted-foreground">/</span>
           <span className="text-foreground font-medium">{section}</span>
