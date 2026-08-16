@@ -10,6 +10,7 @@ import { createDeleteProject } from "@/server/application/project/delete-project
 import { createGetProject } from "@/server/application/project/get-project";
 import { createListProjects } from "@/server/application/project/list-projects";
 import { createRemoveRepo } from "@/server/application/project/remove-repo";
+import { createUpdateProject } from "@/server/application/project/update-project";
 import { authStore, getGitHubGateway, projectStore } from "@/server/composition-root";
 import type { ProjectError } from "@/server/domains/project/errors";
 import type { AuthUser } from "@/server/domains/auth/model";
@@ -78,6 +79,25 @@ export const projectRoutes = new Hono()
   // 项目详情（含仓库列表）。
   .get("/:id", async (c) => {
     const result = await createGetProject({ projectStore })(c.req.param("id"));
+    if (!result.ok) return errorResponse(c, result.error);
+    return c.json(result.value);
+  })
+
+  // 更新项目（名称/描述）。
+  .patch("/:id", async (c) => {
+    const parsed = createProjectSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) {
+      return c.json(
+        { error: { code: "VALIDATION_FAILED", message: parsed.error.issues[0]?.message ?? "入参校验失败" } },
+        400,
+      );
+    }
+    const user = await currentUser(c);
+    const result = await createUpdateProject({ logger, projectStore })({
+      ...parsed.data,
+      id: c.req.param("id"),
+      userId: user.id,
+    });
     if (!result.ok) return errorResponse(c, result.error);
     return c.json(result.value);
   })

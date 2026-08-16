@@ -34,6 +34,22 @@ describe("ProjectStore", () => {
     expect(missing).toEqual({ ok: true, value: null });
   });
 
+  it("更新项目名称/描述；更新不存在 id 返回 null", async () => {
+    const { store, userId } = await createTestStore();
+    const created = await store.createProject({ createdBy: userId, name: "p" });
+    if (!created.ok) throw new Error("createProject failed");
+
+    const updated = await store.updateProject(created.value.id, { description: "新描述", name: "p2" });
+    expect(updated.ok).toBe(true);
+    if (!updated.ok) return;
+    expect(updated.value?.name).toBe("p2");
+    expect(updated.value?.description).toBe("新描述");
+    expect(updated.value?.updatedAt.getTime()).toBeGreaterThanOrEqual(created.value.updatedAt.getTime());
+
+    const missing = await store.updateProject("no-such-id", { name: "x" });
+    expect(missing).toEqual({ ok: true, value: null });
+  });
+
   it("同一项目重复添加同一仓库返回业务错误 PROJECT_REPO_EXISTS", async () => {
     const { store, userId } = await createTestStore();
     const project = await store.createProject({ createdBy: userId, name: "p" });

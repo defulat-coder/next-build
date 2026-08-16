@@ -1,10 +1,12 @@
 "use client";
 
 import { FolderGit2, Plus } from "lucide-react";
+import Link from "next/link";
 import * as React from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { readApiError } from "@/lib/api-error";
 import {
   Card,
   CardContent,
@@ -32,16 +34,6 @@ interface ProjectSummaryDto {
   description: string | null;
   repoCount: number;
   createdAt: string;
-}
-
-/** API 错误体（AGENTS.md 异常约定）：业务异常 message 可直接展示。 */
-interface ApiErrorBody {
-  error: { code: string; message: string };
-}
-
-async function readApiError(res: Response): Promise<string> {
-  const body = (await res.json().catch(() => null)) as ApiErrorBody | null;
-  return body?.error.message ?? "请求失败，请重试。";
 }
 
 export function ProjectsView() {
@@ -91,17 +83,19 @@ export function ProjectsView() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects?.map((project) => (
-            <Card key={project.id}>
-              <CardHeader>
-                <CardTitle>{project.name}</CardTitle>
-                {project.description ? (
-                  <CardDescription>{project.description}</CardDescription>
-                ) : null}
-              </CardHeader>
-              <CardContent className="text-muted-foreground text-sm">
-                {project.repoCount} 个仓库
-              </CardContent>
-            </Card>
+            <Link key={project.id} href={`/projects/${project.id}`} className="block">
+              <Card className="h-full transition-shadow hover:shadow-lg">
+                <CardHeader>
+                  <CardTitle>{project.name}</CardTitle>
+                  {project.description ? (
+                    <CardDescription>{project.description}</CardDescription>
+                  ) : null}
+                </CardHeader>
+                <CardContent className="text-muted-foreground text-sm">
+                  {project.repoCount} 个仓库
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

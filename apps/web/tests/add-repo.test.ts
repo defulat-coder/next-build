@@ -32,6 +32,7 @@ function makeDeps() {
     getProject: vi.fn(async () => ok({ project, repos: [] })),
     listProjects: vi.fn(async () => ok([])),
     removeRepo: vi.fn(async () => ok(undefined)),
+    updateProject: vi.fn(),
   };
   const gateway: GitHubGateway = {
     checkRepo: vi.fn(async (repo: string) => ok({ defaultBranch: "main", repo })),

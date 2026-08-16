@@ -44,6 +44,11 @@ export interface ProjectStore {
   /** 项目详情（含仓库列表）；不存在返回 null。 */
   getProject(id: string): Promise<Result<{ project: Project; repos: ProjectRepo[] } | null, DbError>>;
   createProject(input: { name: string; description?: string; createdBy: string }): Promise<Result<Project, DbError>>;
+  /** 更新名称/描述；不存在返回 null。 */
+  updateProject(
+    id: string,
+    input: { name: string; description?: string | null },
+  ): Promise<Result<Project | null, DbError>>;
   /** 删除项目；仓库经外键级联删除。 */
   deleteProject(id: string): Promise<Result<void, DbError>>;
   /** 挂载仓库；同项目重复添加返回业务错误 PROJECT_REPO_EXISTS。 */
@@ -124,6 +129,22 @@ export function createProjectStore(db: Db, options?: { logger?: Logger }): Proje
       } catch (cause) {
         const error: DbError = { cause, code: "DB_WRITE_FAILED", message: "创建项目失败" };
         logFailure("createProject", error);
+        return err(error);
+      }
+    },
+
+    async updateProject(id, input) {
+      try {
+        const rows = db
+          .update(projects)
+          .set({ description: input.description ?? null, name: input.name, updatedAt: new Date() })
+          .where(eq(projects.id, id))
+          .returning()
+          .all();
+        return ok(rows[0] ?? null);
+      } catch (cause) {
+        const error: DbError = { cause, code: "DB_WRITE_FAILED", message: "更新项目失败" };
+        logFailure("updateProject", error);
         return err(error);
       }
     },
