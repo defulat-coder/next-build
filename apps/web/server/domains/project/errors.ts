@@ -1,0 +1,18 @@
+import type { DbError, ProjectRepoExistsError } from "@next-build/db";
+
+/**
+ * 项目上下文的错误判别联合（AGENTS.md「异常处理」）：
+ * - kind: "business" —— 项目不存在、仓库重复、GitHub 仓库不可达等用户可行动的失败，message 面向用户，日志记 warn；
+ * - kind: "system" —— DB / GitHub API 故障，API 不透传内部细节，日志记 error。
+ */
+export type ProjectError =
+  | { code: "PROJECT_NOT_FOUND"; kind: "business"; message: string; cause?: unknown }
+  | { code: "PROJECT_REPO_EXISTS"; kind: "business"; message: string; cause?: unknown }
+  | { code: "GITHUB_REPO_NOT_FOUND"; kind: "business"; message: string; cause?: unknown }
+  | { code: "GITHUB_API_FAILED"; kind: "system"; message: string; cause?: unknown }
+  | { code: DbError["code"]; kind: "system"; message: string; cause?: unknown };
+
+/** 数据层失败翻译为本上下文错误：唯一约束是业务异常，其余 DB 故障是系统异常。 */
+export function projectErrorFromStore(error: DbError | ProjectRepoExistsError): ProjectError {
+  return error.code === "PROJECT_REPO_EXISTS" ? { ...error, kind: "business" } : { ...error, kind: "system" };
+}

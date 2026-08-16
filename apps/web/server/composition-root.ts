@@ -1,11 +1,13 @@
 import path from "node:path";
 
-import { createAuthStore, createDb } from "@next-build/db";
+import { createAuthStore, createDb, createProjectStore } from "@next-build/db";
 
-import { getFeishuEnv } from "@/lib/env";
+import { getFeishuEnv, getGitHubEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import type { FeishuGateway } from "@/server/domains/auth/ports";
+import type { GitHubGateway } from "@/server/domains/project/ports";
 import { createFeishuGateway } from "@/server/infrastructure/gateways/feishu-client";
+import { createGitHubGateway } from "@/server/infrastructure/gateways/github-client";
 
 /**
  * 组合根：唯一的数据库实例，db + logger + store/gateway 在此装配接线。
@@ -21,9 +23,16 @@ const db = createDb({
 });
 
 export const authStore = createAuthStore(db, { logger: dbLogger });
+export const projectStore = createProjectStore(db, { logger: dbLogger });
 
 /** 飞书网关：凭证按请求惰性读取（lib/env.ts「谁用谁校验」），缺失即抛错由 onError 兜底。 */
 export function getFeishuGateway(): FeishuGateway {
   const env = getFeishuEnv();
   return createFeishuGateway({ appId: env.FEISHU_APP_ID, appSecret: env.FEISHU_APP_SECRET });
+}
+
+/** GitHub 网关：同上，token 按请求惰性读取。 */
+export function getGitHubGateway(): GitHubGateway {
+  const env = getGitHubEnv();
+  return createGitHubGateway({ token: env.GITHUB_TOKEN });
 }

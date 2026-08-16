@@ -6,6 +6,7 @@ import { handle } from "hono/vercel";
 import { logger } from "@/lib/logger";
 import { authGuard } from "@/server/interface/http/auth-guard";
 import { authRoutes } from "@/server/interface/http/auth.routes";
+import { projectRoutes } from "@/server/interface/http/project.routes";
 
 const app = new Hono<{ Variables: { requestId: string } }>().basePath("/api");
 
@@ -44,6 +45,7 @@ app.use("*", authGuard);
 
 app.get("/health", (c) => c.json({ ok: true }));
 app.route("/auth", authRoutes);
+app.route("/projects", projectRoutes);
 
 export const GET = handle(app);
 export const POST = handle(app);

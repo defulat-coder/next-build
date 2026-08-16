@@ -22,6 +22,8 @@ export function createDb(options: { dbPath: string; migrationsFolder: string; lo
   }
   const sqlite = new Database(options.dbPath);
   sqlite.pragma("journal_mode = WAL");
+  // SQLite 默认不关外键；project_repos 的级联删除依赖它。
+  sqlite.pragma("foreign_keys = ON");
   const db = drizzle(sqlite, { schema });
   const start = performance.now();
   try {

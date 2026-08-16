@@ -8,6 +8,13 @@
       "when": 1786834673572,
       "tag": "0000_milky_klaw",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1786840832837,
+      "tag": "0001_lonely_shiver_man",
+      "breakpoints": true
     }
   ]
 }

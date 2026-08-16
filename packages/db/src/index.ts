@@ -49,3 +49,5 @@ export type { AuthStore, AuthUser, DbError, FeishuUserProfile } from "./auth-sto
 export { createDb } from "./client";
 export type { Db } from "./client";
 export type { Logger } from "./logger";
+export { createProjectStore } from "./project-store";
+export type { Project, ProjectRepo, ProjectRepoExistsError, ProjectStore, ProjectSummary } from "./project-store";

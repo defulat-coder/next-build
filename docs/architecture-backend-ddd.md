@@ -29,17 +29,21 @@ apps/web/server/
       model.ts               # AuthUser 等核心概念（统一语言的载体）
       errors.ts              # AuthError 判别联合（带 kind: business/system）
       ports.ts               # 本上下文消费的端口签名（引用 packages 窄接口）
+    project/                 # 同上：Project/ProjectRepo、ProjectError、ProjectStore/GitHubGateway
   application/               # 应用层：用例（事务脚本）
     auth/
       login-with-feishu.ts   # 编排：换 token → 取资料 → upsertUser → 建会话
       logout.ts
       get-current-user.ts
+    project/                 # create-project / list-projects / get-project / delete-project / add-repo / remove-repo
   infrastructure/            # 基础设施：外部世界适配器
     gateways/feishu-client.ts
+    gateways/github-client.ts
   interface/                 # 接口层：HTTP 翻译，无业务逻辑
     http/auth.routes.ts
     http/auth-guard.ts
     http/cookies.ts
+    http/project.routes.ts
 ```
 
 - **interface**：HTTP 翻译——cookie、state 校验、重定向、状态码；无业务逻辑。
