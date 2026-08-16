@@ -208,6 +208,9 @@
 
   html {
     @apply font-sans;
+    /* 全局密度基准：14px root，所有 rem 尺寸（字号/间距/控件高）统一按 0.875 收敛，
+       对齐 Linear/GitHub 级工具密度；PRODUCT.md 控件规范均为 rem 值，自动跟随。 */
+    font-size: 14px;
   }
   .maplibregl-popup-content {
     @apply rounded-none! bg-transparent! p-0! shadow-none!;
