@@ -13,17 +13,38 @@ import { buildAuthorizeUrl, checkState } from "@/server/infrastructure/gateways/
 
 import { OAUTH_STATE_COOKIE, OAUTH_STATE_TTL_SECONDS, SESSION_COOKIE, SESSION_TTL_MS } from "./cookies";
 
+import type { AuthVariables } from "./auth-guard";
+
 /**
  * 认证 HTTP 路由（接口层）：只做 cookie / state 校验 / 重定向 / 状态码翻译，
  * 编排逻辑在 application/auth 用例里，失败日志（auth.failed）由用例打点。
+ * Variables 与主 app 一致：requestId 由 api.request 中间件写入，auth.start/auth.failed 靠它串联请求日志。
  */
-export const authRoutes = new Hono()
+export const authRoutes = new Hono<{ Variables: AuthVariables }>()
 
   // 跳转到飞书授权页，state 写 cookie 防 CSRF。
   .get("/feishu", (c) => {
+    const redirectUri = new URL("/api/auth/feishu/callback", c.req.url).toString();
+    // Next dev 会把 req.url 归一到 localhost：用户若从 127.0.0.1 进来，cookie 种在 127.0.0.1
+    // 而飞书回调落在 localhost，state cookie 必然缺失（STATE_MISMATCH）。
+    // 发起授权前先把浏览器 308 到归一 host，保证 cookie 与回调同 host（生产环境 Host 与 req.url 一致，此分支不触发）。
+    const canonicalHost = new URL(redirectUri).host;
+    const requestHost = c.req.header("host");
+    if (requestHost && requestHost !== canonicalHost) {
+      logger.info(
+        { canonical_host: canonicalHost, event: "auth.host_normalized", request_host: requestHost, request_id: c.get("requestId") },
+        "OAuth 前归一访问 host",
+      );
+      return c.redirect(`${new URL(redirectUri).origin}/api/auth/feishu`, 308);
+    }
+
     const env = getFeishuEnv();
     const state = randomUUID();
-    const redirectUri = new URL("/api/auth/feishu/callback", c.req.url).toString();
+    // host 混用（127.0.0.1/localhost/多端口同 host 互踩 cookie）是 STATE_MISMATCH 高发原因，打点留证。
+    logger.info(
+      { event: "auth.start", redirect_host: canonicalHost, request_id: c.get("requestId") },
+      "发起飞书登录",
+    );
     setCookie(c, OAUTH_STATE_COOKIE, state, {
       httpOnly: true,
       maxAge: OAUTH_STATE_TTL_SECONDS,
@@ -42,7 +63,10 @@ export const authRoutes = new Hono()
     deleteCookie(c, OAUTH_STATE_COOKIE, { path: "/" });
 
     if (!checkState(stateCookie, c.req.query("state")) || !code) {
-      logger.warn({ "error.code": "STATE_MISMATCH", event: "auth.failed" }, "OAuth state 校验失败");
+      logger.warn(
+        { "error.code": "STATE_MISMATCH", event: "auth.failed", request_id: c.get("requestId") },
+        "OAuth state 校验失败",
+      );
       return c.redirect("/login?error=STATE_MISMATCH");
     }
 
