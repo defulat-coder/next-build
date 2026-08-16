@@ -69,7 +69,7 @@ Use **pnpm**（Node.js `>=22.19.0`）：`pnpm install`, `pnpm dev`
 
 遵循 skill `structured-logging-lite`（`.agents/skills/`），AI 时代日志是问题追踪的主通道，核心规则：
 
-- **日志器**：`pino`（结构化 JSON）；只在 `apps/web` 的组合根配置输出。`packages/*` 是库，**只接受宿主注入的 `Logger` 接口**，不自带全局输出。
+- **日志器**：`pino`（结构化 JSON）；只在 `apps/web` 的组合根配置输出。落盘为主：`data/logs/app.N.log` 全量 + `data/logs/error.N.log` 仅 error，按天/50MB 轮转、保留 14 份（pino-roll，N 为递增序号）；dev 额外 pretty 到终端，production 只写文件。`packages/*` 是库，**只接受宿主注入的 `Logger` 接口**，不自带全局输出。
 - **事件即契约**：稳定的事件名（`task.created`、`sandbox.exec`、`wiki.generated`、`ask.query` 等）+ 固定字段（`task_id`、`workspace_id`、`duration_ms`、`error.code`），每条日志必须能回答一个具体的排查问题；不记流水账。
 - **关联**：一次 API 请求一个 `request_id`，一个任务全程带 `task_id`，可串起 路由 → 沙箱 → Agent 的完整链路。
 - **与异常方案咬合**：错误聚合用固定 `error.code`（Result 方案的错误码），不用裸错误字符串；`cause` 保留安全摘要用于调试。
