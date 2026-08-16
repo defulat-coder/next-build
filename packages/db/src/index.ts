@@ -48,3 +48,4 @@ export { createAuthStore } from "./auth-store";
 export type { AuthStore, AuthUser, DbError, FeishuUserProfile } from "./auth-store";
 export { createDb } from "./client";
 export type { Db } from "./client";
+export type { Logger } from "./logger";

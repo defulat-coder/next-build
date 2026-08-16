@@ -1,9 +1,12 @@
 import { fileURLToPath } from "node:url";
 
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
 import { describe, expect, it } from "vitest";
 
 import { createAuthStore, type AuthStore } from "./auth-store";
 import { createDb } from "./client";
+import * as schema from "./schema";
 
 const migrationsFolder = fileURLToPath(new URL("../drizzle", import.meta.url));
 
@@ -70,5 +73,26 @@ describe("AuthStore", () => {
 
     const unknown = await store.findUserBySession("0".repeat(64));
     expect(unknown).toEqual({ ok: true, value: null });
+  });
+
+  it("DB 失败时在产生层打 db.error（err 带原始异常），Result 照常返回", async () => {
+    const calls: { fields: Record<string, unknown>; message: string }[] = [];
+    const logger = {
+      error: (fields: Record<string, unknown>, message: string) => calls.push({ fields, message }),
+      info: () => {},
+      warn: () => {},
+    };
+    // 人为制造故障：不跑迁移，sessions 表不存在，findUserBySession 必炸
+    const db = drizzle(new Database(":memory:"), { schema });
+    const store = createAuthStore(db, { logger });
+
+    const result = await store.findUserBySession("0".repeat(64));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("DB_READ_FAILED");
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].fields).toMatchObject({ "error.code": "DB_READ_FAILED", event: "db.error", op: "findUserBySession" });
+    expect(calls[0].fields.err).toBeInstanceOf(Error);
   });
 });

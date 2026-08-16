@@ -4,6 +4,7 @@ import { err, ok, type Result } from "@next-build/result";
 import { eq } from "drizzle-orm";
 
 import type { Db } from "./client";
+import type { Logger } from "./logger";
 import { sessions, users } from "./schema";
 
 /** 数据层错误：判别联合，code 为稳定常量（日志与 API 边界的聚合键）。 */
@@ -39,7 +40,14 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-export function createAuthStore(db: Db): AuthStore {
+export function createAuthStore(db: Db, options?: { logger?: Logger }): AuthStore {
+  /** DB 失败是系统异常：产生层记 error（err 带完整堆栈），Result 照常返回给边界翻译。 */
+  const logFailure = (op: string, error: DbError) => {
+    options?.logger?.error(
+      { err: error.cause instanceof Error ? error.cause : undefined, "error.code": error.code, event: "db.error", op },
+      error.message,
+    );
+  };
   return {
     async upsertUser(profile) {
       try {
@@ -78,7 +86,9 @@ export function createAuthStore(db: Db): AuthStore {
           .run();
         return ok(user);
       } catch (cause) {
-        return err({ cause, code: "DB_WRITE_FAILED", message: "写入用户失败" });
+        const error: DbError = { cause, code: "DB_WRITE_FAILED", message: "写入用户失败" };
+        logFailure("upsertUser", error);
+        return err(error);
       }
     },
 
@@ -96,7 +106,9 @@ export function createAuthStore(db: Db): AuthStore {
           .run();
         return ok(token);
       } catch (cause) {
-        return err({ cause, code: "DB_WRITE_FAILED", message: "创建会话失败" });
+        const error: DbError = { cause, code: "DB_WRITE_FAILED", message: "创建会话失败" };
+        logFailure("createSession", error);
+        return err(error);
       }
     },
 
@@ -122,7 +134,9 @@ export function createAuthStore(db: Db): AuthStore {
           name: user.name,
         });
       } catch (cause) {
-        return err({ cause, code: "DB_READ_FAILED", message: "查询会话失败" });
+        const error: DbError = { cause, code: "DB_READ_FAILED", message: "查询会话失败" };
+        logFailure("findUserBySession", error);
+        return err(error);
       }
     },
 
@@ -131,7 +145,9 @@ export function createAuthStore(db: Db): AuthStore {
         db.delete(sessions).where(eq(sessions.tokenHash, hashToken(token))).run();
         return ok(undefined);
       } catch (cause) {
-        return err({ cause, code: "DB_WRITE_FAILED", message: "删除会话失败" });
+        const error: DbError = { cause, code: "DB_WRITE_FAILED", message: "删除会话失败" };
+        logFailure("deleteSession", error);
+        return err(error);
       }
     },
   };
