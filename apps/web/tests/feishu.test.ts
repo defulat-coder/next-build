@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildAuthorizeUrl, checkState, exchangeCode, getUserInfo, type FeishuConfig } from "@/lib/auth/feishu";
+import { buildAuthorizeUrl, checkState, exchangeCode, getUserInfo, type FeishuConfig } from "@/server/infrastructure/gateways/feishu-client";
 
 const config: FeishuConfig = {
   appId: "cli_test",

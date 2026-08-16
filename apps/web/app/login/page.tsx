@@ -11,7 +11,7 @@ import { buttonVariants } from "@/components/ui/button";
  * FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md.
  */
 
-/** 回调失败时 /login?error=<code> 的文案映射（见 lib/auth/routes.ts 的 loginFailed）。 */
+/** 回调失败时 /login?error=<code> 的文案映射（见 server/interface/http/auth.routes.ts 回调分支）。 */
 const ERROR_MESSAGES: Record<string, string> = {
   FEISHU_TOKEN_EXCHANGE_FAILED: "飞书授权失败，请重试；反复出现请联系管理员检查应用配置。",
   FEISHU_USER_INFO_FAILED: "获取飞书用户信息失败，请重试。",

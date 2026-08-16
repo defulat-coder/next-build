@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1",
-    "lint": "eslint --max-warnings=0 --no-error-on-unmatched-pattern 'app/**/*.{ts,tsx}' 'components/**/*.{ts,tsx}' 'lib/**/*.{ts,tsx}' '*.config.{js,mjs,ts}'",
+    "lint": "eslint --max-warnings=0 --no-error-on-unmatched-pattern 'app/**/*.{ts,tsx}' 'components/**/*.{ts,tsx}' 'lib/**/*.{ts,tsx}' 'server/**/*.{ts,tsx}' 'tests/**/*.{ts,tsx}' '*.config.{js,mjs,ts}'",
     "typecheck": "node scripts/tsc7.mjs --noEmit",
     "test": "vitest run --passWithNoTests"
   },

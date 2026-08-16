@@ -1,8 +1,9 @@
 import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 
-import { SESSION_COOKIE } from "./session";
-import { authStore } from "./store";
+import { authStore } from "@/server/composition-root";
+
+import { SESSION_COOKIE } from "./cookies";
 
 /**
  * API 整站保护：除 /api/auth/* 与 /api/health 外，无有效会话一律 401。

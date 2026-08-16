@@ -5,26 +5,18 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
 import { getFeishuEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { createGetCurrentUser } from "@/server/application/auth/get-current-user";
+import { createLoginWithFeishu } from "@/server/application/auth/login-with-feishu";
+import { createLogout } from "@/server/application/auth/logout";
+import { authStore, getFeishuGateway } from "@/server/composition-root";
+import { buildAuthorizeUrl, checkState } from "@/server/infrastructure/gateways/feishu-client";
 
-import { buildAuthorizeUrl, checkState, exchangeCode, getUserInfo } from "./feishu";
-import { OAUTH_STATE_COOKIE, OAUTH_STATE_TTL_SECONDS, SESSION_COOKIE, SESSION_TTL_MS } from "./session";
-import { authStore } from "./store";
+import { OAUTH_STATE_COOKIE, OAUTH_STATE_TTL_SECONDS, SESSION_COOKIE, SESSION_TTL_MS } from "./cookies";
 
-/** 登录失败统一打点（err 保留原始异常堆栈；不记录 token/code 等敏感值）并跳回登录页。 */
-function loginFailed(c: { redirect: (url: string) => Response }, error: { code: string; message: string; cause?: unknown }) {
-  // 飞书授权失败属业务异常（用户可重试），按 warn 记；系统异常在 onError 兜底为 error。
-  logger.warn(
-    {
-      err: error.cause instanceof Error ? error.cause : undefined,
-      "error.code": error.code,
-      "error.message": error.message,
-      event: "auth.failed",
-    },
-    "飞书登录失败",
-  );
-  return c.redirect(`/login?error=${encodeURIComponent(error.code)}`);
-}
-
+/**
+ * 认证 HTTP 路由（接口层）：只做 cookie / state 校验 / 重定向 / 状态码翻译，
+ * 编排逻辑在 application/auth 用例里，失败日志（auth.failed）由用例打点。
+ */
 export const authRoutes = new Hono()
 
   // 跳转到飞书授权页，state 写 cookie 防 CSRF。
@@ -43,9 +35,8 @@ export const authRoutes = new Hono()
     );
   })
 
-  // 飞书回调：校验 state → 换 token → 取用户信息 → 建会话 → 回 /tasks。
+  // 飞书回调：校验 state → 登录用例 → 写会话 cookie → 回 /tasks。
   .get("/feishu/callback", async (c) => {
-    const env = getFeishuEnv();
     const code = c.req.query("code");
     const stateCookie = getCookie(c, OAUTH_STATE_COOKIE);
     deleteCookie(c, OAUTH_STATE_COOKIE, { path: "/" });
@@ -56,34 +47,23 @@ export const authRoutes = new Hono()
     }
 
     const redirectUri = new URL("/api/auth/feishu/callback", c.req.url).toString();
-    const config = { appId: env.FEISHU_APP_ID, appSecret: env.FEISHU_APP_SECRET, redirectUri };
-
-    const token = await exchangeCode(config, code);
-    if (!token.ok) return loginFailed(c, token.error);
-
-    const profile = await getUserInfo(token.value.userAccessToken);
-    if (!profile.ok) return loginFailed(c, profile.error);
-
-    const user = await authStore.upsertUser({
-      avatarUrl: profile.value.avatarUrl,
-      feishuOpenId: profile.value.openId,
-      name: profile.value.name,
+    const loginWithFeishu = createLoginWithFeishu({
+      authStore,
+      gateway: getFeishuGateway(),
+      logger,
+      sessionTtlMs: SESSION_TTL_MS,
     });
-    if (!user.ok) return loginFailed(c, user.error);
+    const result = await loginWithFeishu({ code, redirectUri });
+    if (!result.ok) {
+      return c.redirect(`/login?error=${encodeURIComponent(result.error.code)}`);
+    }
 
-    const sessionToken = await authStore.createSession(user.value.id, SESSION_TTL_MS);
-    if (!sessionToken.ok) return loginFailed(c, sessionToken.error);
-
-    setCookie(c, SESSION_COOKIE, sessionToken.value, {
+    setCookie(c, SESSION_COOKIE, result.value.sessionToken, {
       httpOnly: true,
       maxAge: Math.floor(SESSION_TTL_MS / 1000),
       path: "/",
       sameSite: "Lax",
     });
-    logger.info(
-      { event: "auth.login", feishu_open_id: user.value.feishuOpenId, user_id: user.value.id },
-      "用户登录",
-    );
     return c.redirect("/tasks");
   })
 
@@ -91,12 +71,8 @@ export const authRoutes = new Hono()
   .post("/logout", async (c) => {
     const token = getCookie(c, SESSION_COOKIE);
     if (token) {
-      const user = await authStore.findUserBySession(token);
-      await authStore.deleteSession(token);
-      logger.info(
-        { event: "auth.logout", user_id: user.ok ? (user.value?.id ?? undefined) : undefined },
-        "用户退出登录",
-      );
+      const logout = createLogout({ authStore, logger });
+      await logout(token);
     }
     deleteCookie(c, SESSION_COOKIE, { path: "/" });
     return c.redirect("/login");
@@ -108,7 +84,8 @@ export const authRoutes = new Hono()
     if (!token) {
       return c.json({ error: { code: "UNAUTHORIZED", message: "未登录" } }, 401);
     }
-    const result = await authStore.findUserBySession(token);
+    const getCurrentUser = createGetCurrentUser({ authStore });
+    const result = await getCurrentUser(token);
     if (!result.ok) {
       return c.json({ error: { code: result.error.code, message: result.error.message } }, 500);
     }

@@ -1,29 +1,18 @@
 import { err, ok, tryCatch, type Result } from "@next-build/result";
 
-/**
- * 飞书 OAuth 端点封装。凭证由调用方（路由层，从 lib/env.ts 读取）传入，
- * 本模块不直接读 process.env，便于测试。
- * 所有可恢复失败返回 Result，不 throw。
- */
+import type { AuthError } from "@/server/domains/auth/errors";
+import type { FeishuGateway, FeishuProfile, FeishuToken } from "@/server/domains/auth/ports";
 
-export type AuthError =
-  | { code: "FEISHU_TOKEN_EXCHANGE_FAILED"; message: string; cause?: unknown }
-  | { code: "FEISHU_USER_INFO_FAILED"; message: string; cause?: unknown };
+/**
+ * 飞书 OAuth 端点封装（infrastructure 适配器，实现 domains/auth/ports 的 FeishuGateway）。
+ * 凭证由调用方（组合根，从 lib/env.ts 读取）传入，本模块不直接读 process.env，便于测试。
+ * 所有可恢复失败返回 Result（业务异常，kind: "business"），不 throw。
+ */
 
 export interface FeishuConfig {
   appId: string;
   appSecret: string;
   redirectUri: string;
-}
-
-export interface FeishuToken {
-  userAccessToken: string;
-}
-
-export interface FeishuProfile {
-  openId: string;
-  name: string;
-  avatarUrl?: string;
 }
 
 const AUTHORIZE_URL = "https://open.feishu.cn/open-apis/authen/v1/authorize";
@@ -60,7 +49,12 @@ export async function exchangeCode(
       headers: { "Content-Type": "application/json; charset=utf-8" },
       method: "POST",
     }),
-    (cause): AuthError => ({ cause, code: "FEISHU_TOKEN_EXCHANGE_FAILED", message: "请求飞书 token 接口失败" }),
+    (cause): AuthError => ({
+      cause,
+      code: "FEISHU_TOKEN_EXCHANGE_FAILED",
+      kind: "business",
+      message: "请求飞书 token 接口失败",
+    }),
   );
   if (!result.ok) return result;
 
@@ -79,6 +73,7 @@ export async function exchangeCode(
   if (!succeeded || !userAccessToken) {
     return err({
       code: "FEISHU_TOKEN_EXCHANGE_FAILED",
+      kind: "business",
       message: `飞书换 token 失败：${body?.msg ?? body?.error_description ?? body?.error ?? `HTTP ${result.value.status}`}`,
     });
   }
@@ -88,7 +83,12 @@ export async function exchangeCode(
 export async function getUserInfo(userAccessToken: string): Promise<Result<FeishuProfile, AuthError>> {
   const result = await tryCatch(
     fetch(USER_INFO_URL, { headers: { Authorization: `Bearer ${userAccessToken}` } }),
-    (cause): AuthError => ({ cause, code: "FEISHU_USER_INFO_FAILED", message: "请求飞书用户信息接口失败" }),
+    (cause): AuthError => ({
+      cause,
+      code: "FEISHU_USER_INFO_FAILED",
+      kind: "business",
+      message: "请求飞书用户信息接口失败",
+    }),
   );
   if (!result.ok) return result;
 
@@ -100,6 +100,7 @@ export async function getUserInfo(userAccessToken: string): Promise<Result<Feish
   if (!result.value.ok || !body || body.code !== 0 || !body.data?.open_id || !body.data.name) {
     return err({
       code: "FEISHU_USER_INFO_FAILED",
+      kind: "business",
       message: `飞书取用户信息失败：${body?.msg ?? `HTTP ${result.value.status}`}`,
     });
   }
@@ -108,4 +109,15 @@ export async function getUserInfo(userAccessToken: string): Promise<Result<Feish
     name: body.data.name,
     openId: body.data.open_id,
   });
+}
+
+/**
+ * 装配 FeishuGateway 端口实现：appId/appSecret 在此闭合，
+ * redirectUri 依赖回调请求的原始 URL，由用例随每次调用传入。
+ */
+export function createFeishuGateway(config: { appId: string; appSecret: string }): FeishuGateway {
+  return {
+    exchangeCode: ({ code, redirectUri }) => exchangeCode({ ...config, redirectUri }, code),
+    getUserInfo,
+  };
 }

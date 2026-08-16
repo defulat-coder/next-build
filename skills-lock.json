@@ -55,6 +55,12 @@
       "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
       "computedHash": "c86c725ad271ba57d7e9ffd86122b898438314ef9c20ec1dbe03f3e8f149c3b2"
     },
+    "domain-driven-design": {
+      "source": "shi-rudo/ddd-kit-ts",
+      "sourceType": "github",
+      "skillPath": "skills/domain-driven-design/SKILL.md",
+      "computedHash": "821577a710b5c2ca1af982d378d9410bafad8207fb757d5fd203c655bdc15947"
+    },
     "domain-modeling": {
       "source": "mattpocock/skills",
       "sourceType": "github",

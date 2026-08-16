@@ -3,9 +3,9 @@ import { randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
 
-import { authGuard } from "@/lib/auth/guard";
-import { authRoutes } from "@/lib/auth/routes";
 import { logger } from "@/lib/logger";
+import { authGuard } from "@/server/interface/http/auth-guard";
+import { authRoutes } from "@/server/interface/http/auth.routes";
 
 const app = new Hono<{ Variables: { requestId: string } }>().basePath("/api");
 

@@ -36,6 +36,16 @@ Use **pnpm**（Node.js `>=22.19.0`）：`pnpm install`, `pnpm dev`
 - 提交信息使用中文 Conventional Commits。
 - 保持提交在本地，除非明确要求 push。
 
+## 后端架构（DDD）
+
+完整设计见 `docs/architecture-backend-ddd.md`（子域分析、模式选择理由、新上下文落地步骤）。核心规则：
+
+- **四层职责**：`apps/web/server/` 下 `interface`（HTTP 翻译，无业务逻辑）、`application`（用例编排，事务脚本）、`domains`（限界上下文：model/errors/ports）、`infrastructure`（外部世界适配器）；依赖方向只许 `interface → application → domains ← infrastructure`。
+- **新功能必须先归入一个限界上下文**（`domains/<ctx>/`）；拿不准归属就在 PR/提交说明里写理由。
+- **packages 是适配器**：`packages/db`（持久化）、`packages/sandbox`（执行环境）、`packages/result`（共享内核）；端口契约留在 packages 窄接口里，业务规则不进 packages。
+- **业务逻辑模式默认事务脚本**（用例函数编排端口）；升级领域模型需逐上下文论证并更新 `docs/architecture-backend-ddd.md`。
+- **与异常/日志约定咬合**：错误判别联合带 `kind: "business" | "system"` 归 `domains/<ctx>/errors.ts`；日志在产生层打点。
+
 ## 异常处理
 
 完整设计见 `docs/architecture-error-handling.md`（分层模型、错误码注册表、六道兜底防线）。遵循 skill `web-error-handling-result-types`（`.agents/skills/`），核心规则：

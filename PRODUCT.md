@@ -123,6 +123,7 @@ web
 - 任务工作区：[microsandbox](https://github.com/superradcompany/microsandbox)（开源 microVM 沙箱，自托管服务器 + JS SDK；本地开发与将来服务器部署同一套）。
 - Wiki 生成：OpenWiki CLI（npm 包 `openwiki`，Node/TS，基于 DeepAgents；当前 0.3.x，API 未稳定，锁版本）。
 - 数据层：better-sqlite3 + FTS5 + Drizzle ORM（本地唯一数据库；FTS5 虚表用原生 SQL 建，常规表走 Drizzle schema；远程库/Supabase 本期不设计，后续再说）。
+- 后端架构：DDD 四层（interface/application/domains/infrastructure，`apps/web/server/`），事务脚本 + 端口适配器（见 `docs/architecture-backend-ddd.md`）。
 - 运行策略：**本地优先**——项目先保证本机可运行，部署到 Vercel 等外部上传环节延后。
 - 对话流式传输：Vercel AI SDK（`ai`）。
 - 异常处理：Result 类型方案（skill：`web-error-handling-result-types`）——预期错误作为值返回、非预期错误才 throw；共享零依赖小包 `@next-build/result`；API 边界统一翻译为结构化错误响应。
