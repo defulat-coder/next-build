@@ -67,6 +67,12 @@
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
       "computedHash": "683744795bdc9fbfb6c0c2122c4b8119c950e2fe5bcbbf44237dd28aaea34b67"
     },
+    "ego-browser": {
+      "source": "citrolabs/ego-lite",
+      "sourceType": "github",
+      "skillPath": "skills/ego-browser/SKILL.md",
+      "computedHash": "b61cd5ca4d84fa6928a5afdea5d1d176844b675c05f9e922f67d28f630f0026c"
+    },
     "fastify-best-practices": {
       "source": "mcollina/skills",
       "sourceType": "github",
