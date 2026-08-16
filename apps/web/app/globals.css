@@ -21,10 +21,12 @@
   --color-popover: #ffffff;
   --color-popover-foreground: #1c1c1e;
 
-  /* 主强调：墨色（按钮黑底白字，X/Apple 风格） */
-  --color-primary: #1c1c1e;
+  /* 主强调：靛蓝（开发者工具安全区）——active 导航 / 主按钮 / 链接 / 徽标 / 焦点环。
+     浅色 #4f46e5：白字其上 6.29:1，落在白底 6.29:1，均过 WCAG AA 正文线。
+     注意：--color-accent 保留 shadcn 惯例的灰阶 hover 底语义，不做强调色。 */
+  --color-primary: #4f46e5;
   --color-primary-foreground: #ffffff;
-  --color-link: #1c1c1e;
+  --color-link: #4f46e5;
 
   /* 次要层级 */
   --color-secondary: #f5f5f5;
@@ -48,10 +50,13 @@
   --color-destructive-bg: rgba(229, 72, 77, 0.1);
   --color-info-bg: rgba(0, 145, 255, 0.1);
 
-  /* 边框 / 输入 / 焦点环（输入框边框需 ≥1.5:1，勿浅于 #d4d4d4） */
-  --color-border: #eeeeee;
+  /* 边框 / 输入 / 焦点环（边框需肉眼可见，勿浅于 #e2e2e2；输入框边框需 ≥1.5:1，勿浅于 #d4d4d4） */
+  --color-border: #e2e2e2;
   --color-input: #d4d4d4;
-  --color-ring: #1c1c1e;
+  --color-ring: #4f46e5;
+
+  /* 卡片 hover 阴影：有偏移 + 柔 blur（深色主题在下方覆盖） */
+  --shadow-card: 0 1px 2px rgb(28 28 30 / 0.05), 0 12px 32px -8px rgb(28 28 30 / 0.12);
 
   /* 字体：SF Pro 系统栈 */
   --font-sans: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
@@ -71,16 +76,18 @@ html[data-theme="dark"] {
   color-scheme: dark;
 
   --color-background: #181818;
-  --color-background-secondary: #1e1e1e;
+  /* 深色下二级层比背景更深（ recessed well ），浅色卡片浮其上 */
+  --color-background-secondary: #121212;
   --color-foreground: #f4f4f4;
   --color-card: #1e1e1e;
   --color-card-foreground: #f4f4f4;
   --color-popover: #242424;
   --color-popover-foreground: #f4f4f4;
 
-  --color-primary: #f4f4f4;
+  /* 深色强调：亮靛蓝。深底上 5.95:1（正文 AA），深字其上 5.95:1 */
+  --color-primary: #818cf8;
   --color-primary-foreground: #181818;
-  --color-link: #f4f4f4;
+  --color-link: #818cf8;
 
   --color-secondary: #242424;
   --color-secondary-foreground: #999999;
@@ -94,9 +101,11 @@ html[data-theme="dark"] {
   --color-destructive-foreground: #181818;
   --color-destructive-text: #ff8589;
 
-  --color-border: #333333;
+  --color-border: #3a3a3a;
   --color-input: #4a4a4a;
-  --color-ring: #f4f4f4;
+  --color-ring: #818cf8;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px -8px rgb(0 0 0 / 0.6);
 }
 
 /* === 全局基础 ===
@@ -137,12 +146,22 @@ html[data-theme="dark"] {
   .font-display {
     font-family: var(--font-display);
     font-weight: 620;
-    letter-spacing: -0.026em;
+    /* CJK 语境不做西文负字距（紧排会让中文标题糊成一团） */
+    letter-spacing: 0;
   }
 
   code, pre, kbd, samp,
   .font-mono {
     font-family: var(--font-mono);
+  }
+
+  /* 主题切换过渡覆盖所有表面与边框（不只 body）。
+     放在 button/input 专属规则之前，让后者的完整 transition 列表覆盖这里的简写。 */
+  a, button, input, textarea, select,
+  header, main, nav, section, article, aside, div, ul, li, span, p {
+    transition-property: background-color, border-color, color;
+    transition-duration: 0.2s;
+    transition-timing-function: ease;
   }
 
   button,
@@ -154,12 +173,9 @@ html[data-theme="dark"] {
     cursor: pointer;
   }
 
+  /* 按压反馈只保留 button.tsx 里的 translate-y-px 一套，这里不再叠加 scale(0.98) */
   button {
-    transition: background-color 0.2s, opacity 0.2s, transform 0.1s, box-shadow 0.2s;
-  }
-
-  button:active:not(:disabled) {
-    transform: scale(0.98);
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s, transform 0.1s, box-shadow 0.2s;
   }
 
   button:disabled {
@@ -167,7 +183,7 @@ html[data-theme="dark"] {
   }
 
   input, textarea, select {
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
   }
 
   :focus-visible {
@@ -176,7 +192,7 @@ html[data-theme="dark"] {
   }
 
   ::selection {
-    background: rgba(120, 120, 128, 0.24);
+    background: color-mix(in oklch, var(--color-ring) 24%, transparent);
     color: inherit;
   }
 }
@@ -187,6 +203,7 @@ html[data-theme="dark"] {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
@@ -223,6 +240,13 @@ html[data-theme="dark"] {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* 页面/卡片入场：从已可见状态（0.35 透明度）起跳，exponential ease-out。
+   配合 animation-fill-mode: both， stagger 延迟期间元素保持半可见，不从全透明闪烁。 */
+@keyframes enter {
+  from { opacity: 0.35; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes scaleIn {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
@@ -239,6 +263,10 @@ html[data-theme="dark"] {
 
 .animate-slideUp {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-enter {
+  animation: enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-scaleIn {

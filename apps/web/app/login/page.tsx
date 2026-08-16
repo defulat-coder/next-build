@@ -42,7 +42,7 @@ export default async function LoginPage({
       {/* 左：产品声明 */}
       <section className="flex min-h-[42vh] flex-col justify-between gap-10 p-8 lg:min-h-0 lg:p-14">
         <span className="font-display text-sm font-bold tracking-tight">Next Build</span>
-        <h1 className="font-display text-3xl leading-[1.15] font-bold tracking-[-0.03em] text-pretty sm:text-4xl lg:text-6xl">
+        <h1 className="font-display text-3xl leading-[1.15] font-bold text-pretty sm:text-4xl lg:text-6xl">
           {STATEMENT_LINES.map((line, i) => (
             <span
               className="animate-slideUp block"
@@ -63,7 +63,7 @@ export default async function LoginPage({
             <Zap className="text-primary-foreground h-5 w-5" />
           </span>
           <div className="flex flex-col gap-1">
-            <p className="font-display text-lg font-bold tracking-tight">登录 Next Build</p>
+            <p className="font-display text-lg font-bold">登录 Next Build</p>
             <p className="text-muted-foreground text-sm">以任务为单位驱动 AI Agent 完成研发工作</p>
           </div>
           {errorMessage ? (

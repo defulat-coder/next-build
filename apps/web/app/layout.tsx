@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
-  description: "Next Build",
+  description:
+    "Next Build：任务驱动的内部研发平台。描述研发需求，Agent 在独立沙箱中完成并产出任务分支 + Draft PR，由你审核后合并。",
   title: "Next Build",
 };
 
@@ -27,6 +29,7 @@ export default function RootLayout({
       </head>
       <body>
         <TooltipProvider>{children}</TooltipProvider>
+        <Toaster />
       </body>
     </html>
   );

@@ -4,8 +4,8 @@ import Link from "next/link";
 import { TaskCreateDialog } from "@/components/layout/task-create-dialog";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 export function Header() {
   return (
@@ -17,20 +17,13 @@ export function Header() {
         <span className="font-display text-base font-bold tracking-tight">Next Build</span>
       </Link>
 
-      <div className="ml-6 hidden md:block">
-        <Input
-          className="w-64 rounded-full transition-all duration-200 focus:w-80"
-          disabled
-          placeholder="搜索任务、Wiki…"
-          title="搜索即将上线"
-        />
-      </div>
-
       <div className="ml-auto flex items-center gap-2">
+        {/* 创建链路未接入前降级为次级按钮 + 即将上线 badge（对话框保留为界面预览） */}
         <TaskCreateDialog>
-          <Button className="rounded-full font-bold" size="sm">
+          <Button size="sm" variant="outline">
             <Plus className="h-4 w-4" />
             新建任务
+            <Badge className="border-transparent bg-primary/10 text-primary">即将上线</Badge>
           </Button>
         </TaskCreateDialog>
         <ThemeToggle />

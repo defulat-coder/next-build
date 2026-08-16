@@ -1,6 +1,7 @@
 import { BookOpen } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Wiki · Next Build" };
@@ -9,8 +10,9 @@ export default function WikiPage() {
   return (
     <EmptyState
       action={
-        <Button className="mt-2 rounded-full" disabled size="sm" title="仓库选择即将上线" variant="outline">
+        <Button className="mt-2 rounded-full" disabled size="sm" variant="outline">
           选择仓库
+          <Badge className="border-transparent bg-primary/10 text-primary">即将上线</Badge>
         </Button>
       }
       description="选择仓库生成 Wiki 后，OpenWiki 产出的文档会展示在这里。"

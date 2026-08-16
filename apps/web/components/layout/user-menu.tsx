@@ -4,6 +4,7 @@ import { LogOut } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +34,10 @@ export function UserMenu() {
       .then((data) => {
         if (!cancelled) setUser(data);
       })
-      .catch(() => {});
+      .catch(() => {
+        // 401/未登录走上面的 null 分支不会进这里；进这里即网络级失败
+        toast.error("用户信息加载失败，请刷新重试");
+      });
     return () => {
       cancelled = true;
     };
@@ -42,7 +46,11 @@ export function UserMenu() {
   if (!user) return null;
 
   const logout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    const res = await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    if (!res?.ok) {
+      toast.error("退出失败，请重试");
+      return;
+    }
     // refresh 清掉已缓存的受保护页面 RSC 负载，再回登录页。
     router.refresh();
     router.push("/login");
