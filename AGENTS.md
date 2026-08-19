@@ -33,6 +33,7 @@ Use **pnpm**（Node.js `>=22.19.0`）：`pnpm install`, `pnpm dev`
 ## Conventions
 
 - `PRODUCT.md` 是产品规划的 Source of Truth；功能实现前先对照它。
+- **不考虑向后兼容**：实现和重构直接以当前需求为准；不要保留旧 API、旧数据结构、兼容层、迁移桥接或降级分支，除非用户明确要求。
 - 提交信息使用中文 Conventional Commits。
 - 保持提交在本地，除非明确要求 push。
 
