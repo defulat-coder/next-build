@@ -31,9 +31,11 @@ function makeDeps() {
     addRepo: vi.fn(),
     createProject: vi.fn(),
     deleteProject: vi.fn(async () => ok(undefined)),
-    getProject: vi.fn(async () => ok({ project, repos: [] })),
+    getProject: vi.fn(async () => ok({ primaryRepo: null, project, repos: [] })),
     listProjects: vi.fn(async () => ok([])),
     removeRepo: vi.fn(async () => ok(undefined)),
+    setPrimaryRepo: vi.fn(async () => ok(undefined)),
+    updateRepoValidation: vi.fn(),
     updateProject: vi.fn(async (id: string, input: { name: string; description?: string | null }) =>
       ok({ ...project, description: input.description ?? null, id, name: input.name }),
     ),

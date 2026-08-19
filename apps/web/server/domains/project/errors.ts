@@ -10,6 +10,9 @@ import type { ForbiddenError } from "@/server/domains/iam/errors";
 export type ProjectError =
   | { code: "PROJECT_NOT_FOUND"; kind: "business"; message: string; cause?: unknown }
   | { code: "PROJECT_REPO_EXISTS"; kind: "business"; message: string; cause?: unknown }
+  | { code: "PROJECT_REPO_NOT_FOUND"; kind: "business"; message: string; cause?: unknown }
+  | { code: "PROJECT_REPO_UNAVAILABLE"; kind: "business"; message: string; cause?: unknown }
+  | { code: "PRIMARY_REPO_REPLACEMENT_REQUIRED"; kind: "business"; message: string; cause?: unknown }
   | { code: "GITHUB_REPO_NOT_FOUND"; kind: "business"; message: string; cause?: unknown }
   | ForbiddenError
   | { code: "GITHUB_API_FAILED"; kind: "system"; message: string; cause?: unknown }

@@ -1,7 +1,9 @@
 "use client";
 
-import { FolderGit2, Plus } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleDashed, FolderGit2, GitFork, Plus } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -34,6 +36,8 @@ interface ProjectSummaryDto {
   name: string;
   description: string | null;
   repoCount: number;
+  readiness: "setup_required" | "ready" | "needs_attention";
+  primaryRepo: { repo: string } | null;
   createdAt: string;
 }
 
@@ -65,7 +69,7 @@ export function ProjectsView() {
       <PageHeader
         title="项目"
         description="项目是仓库的容器，任务与 Wiki 的归属单位。"
-        actions={hasPermission("project:create") ? <CreateProjectDialog onCreated={load} /> : undefined}
+        actions={hasPermission("project:create") ? <CreateProjectDialog /> : undefined}
       />
 
       {loadError ? (
@@ -86,15 +90,27 @@ export function ProjectsView() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects?.map((project) => (
             <Link key={project.id} href={`/projects/${project.id}`} className="block">
-              <Card className="h-full transition-shadow hover:shadow-lg">
-                <CardHeader>
-                  <CardTitle>{project.name}</CardTitle>
-                  {project.description ? (
-                    <CardDescription>{project.description}</CardDescription>
-                  ) : null}
+              <Card className="h-full transition-shadow hover:shadow-md">
+                <CardHeader className="gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="min-w-0 truncate">{project.name}</CardTitle>
+                    <ReadinessBadge readiness={project.readiness} />
+                  </div>
+                  <CardDescription className="line-clamp-2 min-h-10">
+                    {project.description || "暂无描述"}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="text-muted-foreground text-sm">
-                  {project.repoCount} 个仓库
+                <CardContent className="grid gap-2 text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <GitFork className="size-4" />
+                    {project.repoCount} 个仓库
+                  </span>
+                  <span className="text-muted-foreground truncate">
+                    主仓库：
+                    <span className="text-foreground font-mono">
+                      {project.primaryRepo?.repo ?? "未配置"}
+                    </span>
+                  </span>
                 </CardContent>
               </Card>
             </Link>
@@ -105,7 +121,23 @@ export function ProjectsView() {
   );
 }
 
-function CreateProjectDialog({ onCreated }: { onCreated: () => void }) {
+function ReadinessBadge({ readiness }: { readiness: ProjectSummaryDto["readiness"] }) {
+  const content = {
+    setup_required: { icon: CircleDashed, label: "待配置", className: "bg-muted text-muted-foreground" },
+    ready: { icon: CircleCheck, label: "已就绪", className: "bg-success/10 text-success" },
+    needs_attention: { icon: CircleAlert, label: "需处理", className: "bg-destructive/10 text-destructive" },
+  }[readiness];
+  const Icon = content.icon;
+  return (
+    <span className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${content.className}`}>
+      <Icon className="size-3.5" />
+      {content.label}
+    </span>
+  );
+}
+
+function CreateProjectDialog() {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -126,10 +158,9 @@ function CreateProjectDialog({ onCreated }: { onCreated: () => void }) {
         setError(await readApiError(res));
         return;
       }
+      const project = (await res.json()) as { id: string };
       setOpen(false);
-      setName("");
-      setDescription("");
-      onCreated();
+      router.push(`/projects/${project.id}/repos` as Route);
     } catch {
       setError("网络异常，请重试。");
     } finally {

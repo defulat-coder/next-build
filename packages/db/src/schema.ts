@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 /** 飞书 OAuth 登录的用户，每人一条记录。 */
@@ -32,7 +33,7 @@ export const projects = sqliteTable("projects", {
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
 
-/** 项目挂载的 GitHub 仓库（owner/repo + 默认分支），随项目级联删除。 */
+/** 项目挂载的 GitHub 仓库；每项目最多一个主仓，随项目级联删除。 */
 export const projectRepos = sqliteTable(
   "project_repos",
   {
@@ -41,10 +42,18 @@ export const projectRepos = sqliteTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     repo: text("repo").notNull(),
-    defaultBranch: text("default_branch").notNull(),
+    defaultBranch: text("default_branch"),
+    isPrimary: integer("is_primary", { mode: "boolean" }).notNull(),
+    accessStatus: text("access_status", { enum: ["available", "unavailable"] }).notNull(),
+    lastValidatedAt: integer("last_validated_at", { mode: "timestamp_ms" }).notNull(),
     addedAt: integer("added_at", { mode: "timestamp_ms" }).notNull(),
   },
-  (table) => [uniqueIndex("project_repos_project_repo_unique").on(table.projectId, table.repo)],
+  (table) => [
+    uniqueIndex("project_repos_project_repo_unique").on(table.projectId, table.repo),
+    uniqueIndex("project_repos_one_primary_unique")
+      .on(table.projectId)
+      .where(sql`${table.isPrimary} = 1`),
+  ],
 );
 
 // ---------- IAM（RBAC，docs/architecture-rbac-menu.md §2） ----------

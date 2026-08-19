@@ -7,7 +7,9 @@ import { createCreateProject } from "@/server/application/project/create-project
 import { createDeleteProject } from "@/server/application/project/delete-project";
 import { createGetProject } from "@/server/application/project/get-project";
 import { createListProjects } from "@/server/application/project/list-projects";
+import { createRevalidateRepo } from "@/server/application/project/revalidate-repo";
 import { createRemoveRepo } from "@/server/application/project/remove-repo";
+import { createSetPrimaryRepo } from "@/server/application/project/set-primary-repo";
 import { createUpdateProject } from "@/server/application/project/update-project";
 import { getGitHubGateway, iamStore, projectStore } from "@/server/composition-root";
 import type { ProjectError } from "@/server/domains/project/errors";
@@ -26,6 +28,10 @@ const addRepoSchema = z.object({
   repo: z.string().min(1, "仓库必填"),
 });
 
+const removeRepoSchema = z.object({
+  replacementPrimaryRepoId: z.string().min(1).optional(),
+});
+
 /**
  * 项目 HTTP 路由（接口层）：只做入参校验 / 状态码翻译，编排逻辑在 application/project 用例里。
  * 整站守卫（auth-guard）已把当前用户与权限码集合放进 context，此处直接取用。
@@ -39,7 +45,9 @@ function errorResponse(c: Context, error: ProjectError) {
   const status =
     error.code === "PROJECT_NOT_FOUND"
       ? 404
-      : error.code === "PROJECT_REPO_EXISTS"
+      : error.code === "PROJECT_REPO_NOT_FOUND"
+        ? 404
+        : error.code === "PROJECT_REPO_EXISTS" || error.code === "PRIMARY_REPO_REPLACEMENT_REQUIRED"
         ? 409
         : error.code === "FORBIDDEN"
           ? 403
@@ -80,7 +88,7 @@ export const projectRoutes = new Hono<{ Variables: AuthVariables }>()
 
   // 项目详情（含仓库列表）。
   .get("/:id", async (c) => {
-    const result = await createGetProject({ projectStore })(c.req.param("id"));
+    const result = await createGetProject({ logger, projectStore })({ actor: actorOf(c), id: c.req.param("id") });
     if (!result.ok) return errorResponse(c, result.error);
     return c.json(result.value);
   })
@@ -132,12 +140,42 @@ export const projectRoutes = new Hono<{ Variables: AuthVariables }>()
     return c.json(result.value, 201);
   })
 
-  // 移除仓库（repo:manage 在用例内判定）。
+  // 仅可访问仓库可主动设为主仓库（repo:manage 在用例内判定）。
+  .put("/:id/repos/:repoId/primary", async (c) => {
+    const result = await createSetPrimaryRepo({ logger, projectStore })({
+      actor: actorOf(c),
+      projectId: c.req.param("id"),
+      repoId: c.req.param("repoId"),
+    });
+    if (!result.ok) return errorResponse(c, result.error);
+    return c.json(result.value);
+  })
+
+  // 手动复检：成功/404 写入新状态；网络或限流保留旧状态。
+  .post("/:id/repos/:repoId/revalidate", async (c) => {
+    const result = await createRevalidateRepo({ gateway: getGitHubGateway(), logger, projectStore })({
+      actor: actorOf(c),
+      projectId: c.req.param("id"),
+      repoId: c.req.param("repoId"),
+    });
+    if (!result.ok) return errorResponse(c, result.error);
+    return c.json(result.value);
+  })
+
+  // 移除仓库；删除主仓且还有其他仓库时，显式替代主仓与删除在同一事务完成。
   .delete("/:id/repos/:repoId", async (c) => {
+    const parsed = removeRepoSchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+      return c.json(
+        { error: { code: "VALIDATION_FAILED", message: parsed.error.issues[0]?.message ?? "入参校验失败" } },
+        400,
+      );
+    }
     const result = await createRemoveRepo({ logger, projectStore })({
       actor: actorOf(c),
       projectId: c.req.param("id"),
       repoId: c.req.param("repoId"),
+      replacementPrimaryRepoId: parsed.data.replacementPrimaryRepoId,
     });
     if (!result.ok) return errorResponse(c, result.error);
     return c.json({ ok: true });

@@ -67,4 +67,12 @@ describe("checkRepo", () => {
     expect(result.error.kind).toBe("system");
     expect(result.error.cause).toBeInstanceOf(Error);
   });
+
+  it("429 限流是系统异常", async () => {
+    mockFetch({ message: "rate limited" }, { ok: false, status: 429 });
+    const result = await checkRepo(config, "octocat/hello-world");
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatchObject({ code: "GITHUB_API_FAILED", kind: "system" });
+  });
 });

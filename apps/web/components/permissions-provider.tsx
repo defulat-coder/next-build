@@ -15,17 +15,32 @@ interface PermissionsContextValue {
   /** 权限码集合；null = 尚未加载完成（带权限码的菜单/按钮先不渲染，避免越权闪现）。 */
   permissions: ReadonlySet<PermissionCode> | null;
   hasPermission: (code: PermissionCode) => boolean;
+  /** 项目动作必须按当前 projectId 判定，不能使用其他项目拍平后的同名权限。 */
+  hasProjectPermission: (projectId: string, code: PermissionCode) => boolean;
 }
 
 const PermissionsContext = createContext<PermissionsContextValue | null>(null);
 
 /** GET /api/me/permissions 的响应形状（server/application/iam/get-my-permissions.ts）。 */
-interface MyPermissionsDto {
+export interface MyPermissionsDto {
   permissions: PermissionCode[];
+  projects: { permissions: PermissionCode[]; projectId: string }[];
+  siteRole: string | null;
+}
+
+export function hasProjectPermissionIn(
+  snapshot: MyPermissionsDto | null,
+  projectId: string,
+  code: PermissionCode,
+): boolean {
+  return (
+    snapshot?.siteRole === "site:admin" ||
+    snapshot?.projects.find((project) => project.projectId === projectId)?.permissions.includes(code) === true
+  );
 }
 
 export function PermissionsProvider({ children }: { children: React.ReactNode }) {
-  const [permissions, setPermissions] = useState<ReadonlySet<PermissionCode> | null>(null);
+  const [snapshot, setSnapshot] = useState<MyPermissionsDto | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,23 +50,35 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
         return (await res.json()) as MyPermissionsDto;
       })
       .then((data) => {
-        if (!cancelled) setPermissions(new Set(data.permissions));
+        if (!cancelled) {
+          setSnapshot(data);
+        }
       })
       .catch(() => {
         // 拉取失败（含未登录的 401）：按空集合处理，宁可少显示也不错显示。
-        if (!cancelled) setPermissions(new Set());
+        if (!cancelled) setSnapshot({ permissions: [], projects: [], siteRole: null });
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const hasPermission = useCallback(
-    (code: PermissionCode) => permissions?.has(code) ?? false,
-    [permissions],
+  const permissions = useMemo(
+    () => (snapshot ? new Set(snapshot.permissions) : null),
+    [snapshot],
   );
 
-  const value = useMemo(() => ({ hasPermission, permissions }), [hasPermission, permissions]);
+  const hasPermission = useCallback((code: PermissionCode) => permissions?.has(code) ?? false, [permissions]);
+
+  const hasProjectPermission = useCallback(
+    (projectId: string, code: PermissionCode) => hasProjectPermissionIn(snapshot, projectId, code),
+    [snapshot],
+  );
+
+  const value = useMemo(
+    () => ({ hasPermission, hasProjectPermission, permissions }),
+    [hasPermission, hasProjectPermission, permissions],
+  );
 
   return <PermissionsContext.Provider value={value}>{children}</PermissionsContext.Provider>;
 }
@@ -59,5 +86,5 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
 /** 当前用户权限判定；Provider 之外（如登录页）视为无任何权限。 */
 export function usePermissions(): PermissionsContextValue {
   const context = useContext(PermissionsContext);
-  return context ?? { hasPermission: () => false, permissions: null };
+  return context ?? { hasPermission: () => false, hasProjectPermission: () => false, permissions: null };
 }

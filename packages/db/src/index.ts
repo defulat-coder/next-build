@@ -71,4 +71,12 @@ export {
 } from "./permissions";
 export type { PermissionCode, ProjectRoleCode, RoleCode, SiteRoleCode } from "./permissions";
 export { createProjectStore } from "./project-store";
-export type { Project, ProjectRepo, ProjectRepoExistsError, ProjectStore, ProjectSummary } from "./project-store";
+export type {
+  Project,
+  ProjectDetail,
+  ProjectRepo,
+  ProjectRepoExistsError,
+  ProjectStore,
+  ProjectSummary,
+  RepoAccessStatus,
+} from "./project-store";

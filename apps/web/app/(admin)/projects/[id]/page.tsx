@@ -4,7 +4,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const { id } = await params;
   return (
     <main id="main-content" className="flex min-h-min flex-1 flex-col p-4 sm:p-6">
-      <ProjectDetailView projectId={id} />
+      <ProjectDetailView projectId={id} activeTab="overview" />
     </main>
   );
 }

@@ -30,20 +30,30 @@ const input = { actor, projectId: "p-1", repo: "octocat/hello-world" };
 
 function makeDeps() {
   const projectStore: ProjectStore = {
-    addRepo: vi.fn(async (repoInput: { projectId: string; repo: string; defaultBranch: string }) =>
+    addRepo: vi.fn(async (repoInput: {
+      accessStatus: "available" | "unavailable";
+      projectId: string;
+      repo: string;
+      defaultBranch: string | null;
+    }) =>
       ok({
+        accessStatus: repoInput.accessStatus,
         addedAt: new Date(),
         defaultBranch: repoInput.defaultBranch,
         id: "r-1",
+        isPrimary: true,
+        lastValidatedAt: new Date(),
         projectId: repoInput.projectId,
         repo: repoInput.repo,
       }),
     ),
     createProject: vi.fn(),
     deleteProject: vi.fn(async () => ok(undefined)),
-    getProject: vi.fn(async () => ok({ project, repos: [] })),
+    getProject: vi.fn(async () => ok({ primaryRepo: null, project, repos: [] })),
     listProjects: vi.fn(async () => ok([])),
     removeRepo: vi.fn(async () => ok(undefined)),
+    setPrimaryRepo: vi.fn(async () => ok(undefined)),
+    updateRepoValidation: vi.fn(),
     updateProject: vi.fn(),
   };
   const gateway: GitHubGateway = {
@@ -65,6 +75,7 @@ describe("addRepo", () => {
     expect(result.value.repo).toBe("octocat/hello-world");
     expect(deps.gateway.checkRepo).toHaveBeenCalledWith("octocat/hello-world");
     expect(deps.projectStore.addRepo).toHaveBeenCalledWith({
+      accessStatus: "available",
       defaultBranch: "main",
       projectId: "p-1",
       repo: "octocat/hello-world",
@@ -75,7 +86,7 @@ describe("addRepo", () => {
     );
   });
 
-  it("GitHub 校验失败时不入库", async () => {
+  it("GitHub 404/无权限时保留不可访问记录", async () => {
     const error: ProjectError = {
       code: "GITHUB_REPO_NOT_FOUND",
       kind: "business",
@@ -87,12 +98,32 @@ describe("addRepo", () => {
 
     const result = await addRepo({ ...input, repo: "octocat/no-such" });
 
+    expect(result.ok).toBe(true);
+    expect(deps.projectStore.addRepo).toHaveBeenCalledWith({
+      accessStatus: "unavailable",
+      defaultBranch: null,
+      projectId: "p-1",
+      repo: "octocat/no-such",
+    });
+    expect(deps.logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ access_status: "unavailable", event: "project.repo_added" }),
+      "不可访问仓库已保留在项目中",
+    );
+  });
+
+  it("GitHub 网络或限流失败时不覆盖数据", async () => {
+    const error: ProjectError = {
+      code: "GITHUB_API_FAILED",
+      kind: "system",
+      message: "请求 GitHub API 失败",
+    };
+    const deps = makeDeps();
+    vi.mocked(deps.gateway.checkRepo).mockResolvedValue(err(error));
+
+    const result = await createAddRepo(deps)(input);
+
     expect(result).toEqual({ error, ok: false });
     expect(deps.projectStore.addRepo).not.toHaveBeenCalled();
-    expect(deps.logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ "error.code": "GITHUB_REPO_NOT_FOUND", event: "project.failed" }),
-      "添加仓库失败",
-    );
   });
 
   it("重复添加时透出业务错误 PROJECT_REPO_EXISTS", async () => {

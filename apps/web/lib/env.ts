@@ -30,13 +30,11 @@ export const getFeishuEnv = makeEnvGetter(
   }),
 );
 
-/** GitHub 凭证（克隆仓库、推送任务分支、开 Draft PR）。 */
+/** GitHub 凭证（多仓库校验、克隆、推送任务分支、开 Draft PR）。 */
 export const getGitHubEnv = makeEnvGetter(
   z.object({
     /** GitHub fine-grained PAT */
     GITHUB_TOKEN: z.string().min(1, "GITHUB_TOKEN 未配置"),
-    /** 默认目标仓库，格式 owner/repo */
-    GITHUB_REPO: z.string().regex(/^[\w.-]+\/[\w.-]+$/, "GITHUB_REPO 必须是 owner/repo 格式"),
   }),
 );
 

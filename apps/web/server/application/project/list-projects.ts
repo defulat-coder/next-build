@@ -4,7 +4,7 @@ import { isSiteAdmin } from "@/server/domains/iam/access";
 import type { ActorContext } from "@/server/domains/iam/model";
 import type { ProjectError } from "@/server/domains/project/errors";
 import { projectErrorFromStore } from "@/server/domains/project/errors";
-import type { ProjectSummary } from "@/server/domains/project/model";
+import { deriveReadiness, type ProjectSummary } from "@/server/domains/project/model";
 import type { ProjectStore } from "@/server/domains/project/ports";
 
 /**
@@ -15,8 +15,12 @@ export function createListProjects(deps: { projectStore: ProjectStore }) {
   return async (actor: ActorContext): Promise<Result<ProjectSummary[], ProjectError>> => {
     const result = await deps.projectStore.listProjects();
     if (!result.ok) return err(projectErrorFromStore(result.error));
-    if (isSiteAdmin(actor.permissions)) return ok(result.value);
+    const summaries = result.value.map((project) => ({
+      ...project,
+      readiness: deriveReadiness(project),
+    }));
+    if (isSiteAdmin(actor.permissions)) return ok(summaries);
     const memberProjectIds = new Set(actor.permissions.projects.map((p) => p.projectId));
-    return ok(result.value.filter((p) => p.createdBy === actor.userId || memberProjectIds.has(p.id)));
+    return ok(summaries.filter((p) => p.createdBy === actor.userId || memberProjectIds.has(p.id)));
   };
 }
