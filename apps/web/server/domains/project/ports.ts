@@ -9,6 +9,27 @@ export type { ProjectStore } from "@next-build/db";
 export interface GitHubRepo {
   repo: string;
   defaultBranch: string;
+  providerRepoId: string;
+  canPush: boolean;
+  canCreatePr: boolean;
+}
+
+export interface GitHubExecutionTarget extends GitHubRepo {
+  baseSha: string;
+}
+export interface GitHubRepoHead extends GitHubRepo {
+  headSha: string;
+}
+export interface GitHubPullRequest {
+  number: number;
+  nodeId: string;
+  url: string;
+  headSha: string;
+  state: "open" | "closed";
+  merged: boolean;
+  mergedAt: Date | null;
+  mergedSha: string | null;
+  draft: boolean;
 }
 
 /**
@@ -17,4 +38,15 @@ export interface GitHubRepo {
  */
 export interface GitHubGateway {
   checkRepo(repo: string): Promise<Result<GitHubRepo, ProjectError>>;
+  resolveRepoHead(repo: string): Promise<Result<GitHubRepoHead, ProjectError>>;
+  resolveExecutionTarget(repo: string): Promise<Result<GitHubExecutionTarget, ProjectError>>;
+  createDraftPullRequest(input: {
+    repo: string;
+    title: string;
+    body: string;
+    head: string;
+    base: string;
+  }): Promise<Result<GitHubPullRequest, ProjectError>>;
+  getPullRequest(repo: string, number: number): Promise<Result<GitHubPullRequest, ProjectError>>;
+  findPullRequestByHead(repo: string, headBranch: string): Promise<Result<GitHubPullRequest | null, ProjectError>>;
 }

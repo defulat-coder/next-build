@@ -2,7 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-> 本文档是当前阶段的功能规划（Source of Truth），尚未进入实现。改动规划请先改这里。
+> 本文档是产品行为与后续规划的 Source of Truth。已实现能力和下一阶段设计都必须先在这里对齐。
 
 ## Platform
 
@@ -50,67 +50,103 @@ web
 
 ## 核心概念
 
-- **项目（Project）**：仓库的容器（1:N），任务与 Wiki 的归属单位。项目下可配置多个 GitHub 仓库，其仓库集即生成 Wiki 的工作区。
-- **任务（Task）**：平台的一等公民。每个任务绑定一个 Git 仓库、一个 Git 分支和一段 Agent 会话，围绕任务组织对话、代码变动与产出。
+- **项目（Project）**：轻量交付 Brief + 仓库工作区 + 治理策略 + 交付汇总。项目不承载具体执行状态；Task/Delivery/Knowledge 通过稳定合同归属项目。
+- **任务（Task）**：平台的一等公民，保存需求、范围、验收标准与稳定执行目标。
+- **任务执行（TaskRun）**：一次可恢复的 Agent 执行尝试，保存沙箱、Agent 会话、阶段、心跳、失败与重试信息。
+- **交付（Delivery）**：任务在 GitHub 的分支、Draft PR、评审与 merge 状态；GitHub 是代码/PR 真相源，本地保存映射和过程状态。
+- **知识生成（KnowledgeGeneration）**：项目 Wiki/源文件的一次版本化生成；只有完整发布的 generation 可供 Wiki 与 Ask 使用。
+- **业务验收（AcceptanceDecision）**：指定验收人基于任务验收标准，对已合并交付逐项给出通过/拒绝结论和证据；它与代码 merge 是两个不同事实。
+
+## 端到端交付主线
+
+平台的完成定义固定为：
+
+`业务需求 → Project Brief → Task 验收合同 → Agent 执行 → 技术验证 → Draft PR → 人工评审/合并 → 目标环境验证 → 业务验收 → Project 完成/复盘`
+
+- `execution_succeeded`：Agent 已完成技术工作、验证命令通过且 Draft PR 已建立。
+- `delivery_merged`：代码已由人合入目标分支。
+- `business_accepted`：指定验收人逐条确认业务标准，保存目标环境、证据、结论、备注与时间。
+- `project_completed`：项目成功标准满足，且所有非取消交付都已业务验收；不能由一个未校验的设置项直接宣告。
+- Merge 不是最终产品交付。需要发布/部署的平台必须在业务验收前记录目标环境与可访问证据；自动 Deployment/rollback 接入按部署提供方逐个实现，首版允许人工提供环境和证据。
 
 ## 功能规划
 
 ### 1. 创建任务
 
-创建任务后，通过 Claude Agent SDK 驱动 Agent 完成需求。
+创建任务时必须提交一份验收合同：目标/用户故事、范围、非目标、可勾选验收标准、预期验证命令、风险/影响路径与 reviewer。创建成功后，通过 Claude Agent SDK 驱动 Agent 完成需求。
 
-- 每个任务在 **microsandbox**（开源自托管 microVM 沙箱）中运行，任务创建时将指定的 GitHub 仓库克隆进沙箱。沙箱层收口为窄接口（创建/执行/读文件/销毁），microsandbox 是第一个实现，便于将来替换。
-- 每个任务对应**一个独立的 Git 分支**（任务即分支，命名 `agent/<任务名>`）。
-- Agent 在沙箱内可以操作文件、执行 Git 命令并提交。
-- 任务完成后**自动 push 任务分支并开 Draft PR**；**合入 main 必须由人在 GitHub 上操作**（配合 main 分支保护，Agent 无权直接推送主分支）。
-- 代码变动的存储与审阅完全依托 GitHub（分支 + PR diff），不把代码变动存进数据库。
-- 任务列表通过 GitHub API 枚举 `agent/` 前缀的 PR 获得。
+- Task 本地持久化 `projectId`、`projectRepoId`、需求/验收、创建人、reviewer 与 idempotency key；不保存代码 diff。
+- Task 创建必须经 `ResolveExecutionTarget(projectId, projectRepoId)` admission：重新校验所选仓库，冻结 provider repo id、规范仓库名、默认分支、base SHA 与校验版本；项目列表上的旧 `ready` 不是执行凭证。
+- 每个任务在 **microsandbox** 中运行；TaskRun 记录 `queued → provisioning → running → publishing → succeeded | failed | cancelled | manual_repair`，并保存 sandboxRef、agentSessionId、attempt、heartbeat、deadline 与错误。
+- 每个任务对应**一个稳定唯一分支**：`agent/<short-task-id>-<slug>`；重试复用同一任务身份，不按可变任务名寻找分支。
+- Delivery 独立记录 `none → branch_pushed → draft_pr_open → ready_for_review → merged | closed_unmerged`，保存 PR id/url、base/head/merged SHA。
+- Agent 在沙箱内可以操作文件、执行 Git 命令并提交；完成后自动 push 任务分支并开 Draft PR。
+- `execution_succeeded` 表示 Draft PR 已建立；`delivery_merged` 表示 PR 已由人合并；`business_accepted` 才表示任务完成。**合入 main 必须由人在 GitHub 上操作**。
+- GitHub webhook 驱动 PR/merge 回流，定时或手动 reconcile 兜底；重复事件按 Delivery/PR id 幂等消费。
+- 服务端持久化 process manager 负责 resume/retry/cancel/repair、有限技术重试和孤儿沙箱清理；浏览器不承载 durable workflow。
+- Agent 完成时生成 Delivery Summary：改动、未完成项、验证命令与结果、证据、已知风险；required checks 通过后才进入 review。
+- 合并后 Task 进入 `acceptance_pending`；只有指定 reviewer 或具有验收权限的管理员可以提交 AcceptanceDecision。拒绝后必须创建后续修复任务或显式关闭，不允许把 rejected 当作 completed。
 
 ### 2. 项目管理
 
-项目是可挂多个 GitHub 仓库的组，是任务与 Wiki 的共同容器；项目工作区第一期先把仓库配置变成后续能力的前置条件。首次流程固定为「创建项目 → 配置首个仓库 → 自动设为主仓库 → 项目就绪」。
+项目是任务与 Wiki 的治理边界。创建时保持轻量，但项目详情必须补齐 Brief：问题陈述、期望结果、成功标准、非目标、负责人、目标日期、约束与参考链接。首次流程为「创建项目 → 完善 Brief → 配置首仓 → 自动设为主仓 → 能力门禁通过」。
+
+项目有两个正交维度：
+
+- 生命周期：`planned | active | blocked | completed | archived`；进入 completed 必须通过项目完成策略。
+- 工作区就绪度：`setup_required | ready | needs_attention`。
+
+已归档项目只读、可搜索、可恢复。普通终止动作是归档；只有没有 Task/Delivery/Knowledge 历史的空项目允许物理删除。
 
 #### 2.1 就绪状态
 
 - `setup_required`（待配置）：项目还没有仓库。
-- `ready`（已就绪）：主仓库最近一次校验可访问。
-- `needs_attention`（需处理）：主仓库不可访问；后续创建任务和生成 Wiki 必须阻断，直到主仓恢复可访问或切换到另一可用仓库。
+- `ready`（已就绪）：主仓库最近一次 metadata 校验可访问。
+- `needs_attention`（需处理）：主仓库不可访问或工作区状态不完整。
 - 项目列表展示名称、描述、状态、仓库数与主仓库；创建项目成功后直接进入该项目的仓库配置页。
-- 项目详情使用可深链的「概览 / 仓库 / 设置」三个标签页。概览只展示就绪状态、主仓库、仓库数量、最近校验时间与待处理事项，不提前放置尚未实现的任务或 Wiki 操作。
+- 健康状态只描述配置基础，不等于 Task/Wiki/Ask 都能执行。能力门禁分别为 `taskEligibility(repoId)`、`wikiEligibility`、`askEligibility`，页面展示具体阻断项。
+- 项目概览最终展示 ProjectDeliveryOverview：Brief 完整度、能力门禁、活跃/失败 TaskRun、待审/已合并 Delivery、Wiki generation freshness、最近活动与下一步。
 
 #### 2.2 仓库配置
 
-- 项目可配置多个 GitHub 仓库，仓库可同时出现在多个项目中；输入接受 `owner/repo` 或 GitHub URL，仍使用服务端 `GITHUB_TOKEN` 校验，不做定时校验。
+- 项目可配置多个 GitHub 仓库，仓库可同时出现在多个项目中；输入接受 `owner/repo` 或 GitHub URL，仍使用服务端 `GITHUB_TOKEN` 校验。
 - 首个仓库自动成为主仓库。仓库记录包含规范仓库名、默认分支、主仓标识、访问状态（`available | unavailable`）与最后校验时间。
 - 仅 `available` 仓库能被用户主动设为主仓。删除最后一个仓库后项目回到 `setup_required`；删除主仓且仍有其他仓库时，必须显式选择一个 `available` 替代主仓，并在同一数据库事务内完成切换与删除。
 - 重新校验成功时刷新 GitHub 返回的规范仓库名、默认分支、访问状态与校验时间；GitHub 404（包含私有仓库无权限的等价响应）保留仓库记录并标记为 `unavailable`；网络失败或限流不覆盖旧状态。
+- 仓库记录补 provider repository id 与 version；Task admission 再验证 metadataReadable/cloneable/pushable/prCreatable 并获取 base SHA。校验结果有 freshness TTL，不能无限期假绿。
+- 仓库从项目移除采用 detach/soft delete；已有 Task/Delivery/Knowledge 继续引用冻结执行目标和历史仓库身份。
 - 仓库页的空状态直接提供输入框；非空列表展示默认分支、主仓标识、访问状态和最后校验时间，并按当前项目权限提供「设为主仓 / 重新校验 / 移除」。
 
 #### 2.3 项目设置与权限
 
-- 设置页提供名称、描述编辑，删除项目独立放在危险操作区。
+- 设置页提供 Brief、生命周期、名称/描述、负责人和项目默认策略；Archive 是主操作，物理删除仅用于空项目。
 - 项目详情读取必须通过 `project:read`；项目内操作必须按当前 `projectId` 判断权限，不能用其他项目的同名权限误显示操作。
-- 本期不做成员管理，不修改角色与权限配置页面。
-- 数据读取派生 `readiness` 与 `primaryRepo`；迁移既有项目时，以每个项目最早添加的仓库为主仓，并用 `addedAt` 回填 `lastValidatedAt`。
-- 任务创建时先选项目再选仓库；Wiki 以项目为单位生成（其仓库集即工作区）。任务与 Wiki 在后续实现时必须先消费项目就绪状态门禁。
+- 项目必须至少显示只读负责人/成员；成员管理继续复用 IAM 上下文，Task reviewer 单独记录。
+- 创建项目与写入 owner 必须同一事务或有可靠补偿，命令支持 idempotency key；项目/仓库更新使用 version/CAS，冲突返回可行动的 409。
+- 任务创建时先选项目再选仓库，并消费 `taskEligibility(repoId)`；Wiki/Ask 消费各自门禁，不共享一个粗粒度绿灯。
 
 ### 3. 仓库 Wiki
 
-以**项目**为单位生成 Wiki：项目的仓库集即工作区，对项目内配置的多个仓库整体生成文档。
+以**项目**为单位生成 Wiki：项目的仓库集即工作区，对项目内配置的多个仓库整体生成版本化知识快照。
 
 - Wiki 生成使用 LangChain 开源的 **[OpenWiki](https://github.com/langchain-ai/openwiki) CLI**（本地运行，产出为 Markdown 文件，支持代码变更后增量更新）。弃用 Z Read。
-- **源文件与 Wiki 文档一起入库**（本地 SQLite），页面端从库中读取渲染。
+- `KnowledgeGeneration` 保存 generation id、项目、来源仓库与 SHA 集、状态、trigger、开始/发布时间和错误。
+- 生成先写 staging generation，全部完成后原子 promote；失败继续服务上一成功版本，禁止 Wiki 与源码半新半旧。
+- 多仓 generation 默认 all-or-nothing；若将来支持 partial，必须在 Wiki/Ask 明确显示缺失仓库。
+- **源文件与 Wiki 文档一起入库**（本地 SQLite），页面只读取已 published generation。
 - 入库前过滤文件：排除 lock 文件、二进制、构建产物、minified 文件；超大文件截断或跳过。
 - 源文件在库中只是**只读镜像**，GitHub 仍是真相源，重新生成时整体覆盖。
+- `DeliveryMerged v1` 事件携带 task/project/projectRepo/PR/mergeSha/mergedAt，标记知识过期并触发可恢复刷新。
 - 数据层收口为接口：本地实现为 SQLite，将来部署服务器时再换 Supabase/Postgres。
 
 ### 4. Ask AI
 
-基于库中的 Wiki 文档和源文件做问答（简化 RAG）：
+基于已发布 KnowledgeGeneration 中的 Wiki 文档和源文件做问答（简化 RAG）：
 
 - 检索层用 SQLite **FTS5 全文检索**，`unicode61`（英文/代码标识符）+ `trigram`（中文子串）双索引合并排序。
 - 已知限制：trigram 要求查询词 ≥3 个字符；查询词中的 `-` 等符号需清洗后再 MATCH。
 - 检索结果拼装为上下文交给 Claude 回答；后期需要语义检索时再引入向量（本地可用 sqlite-vec，服务器侧 pgvector）。
+- 每次回答固定引用一个 published generation，并返回 `asOf`、source SHAs 与 stale/partial 状态；没有成功 generation 时 `askEligibility` 阻断。
 
 ### 5. 智能问书
 
@@ -162,7 +198,8 @@ web
 ## 开放问题
 
 - ~~「智能问书」~~ → 暂缓设计，本轮不做。
-- ~~Wiki 的「工作区」概念~~ → 已定：工作区即项目的仓库集；项目（仓库组，1:N）是任务与 Wiki 的归属单位，项目管理（项目 CRUD + 仓库配置 + GitHub 校验）先行落地，任务选项目/Wiki 接 OpenWiki 是下一棒。
-- ~~Wiki 生成是调用 Z Read 外部服务还是自建管线~~ → 已定：OpenWiki CLI。待验证：OpenWiki 对多仓库工作区的支持方式（可能需按仓库分别生成再合并）。
+- ~~Wiki 的「工作区」概念~~ → 已定：工作区即项目仓库集；Project 提供治理/能力门禁，Task 与 Knowledge 通过稳定合同消费，不能直接读取 ProjectStore 内部模型。
+- ~~Wiki 生成是调用 Z Read 外部服务还是自建管线~~ → 已定：OpenWiki CLI。第一版多仓按仓库分别生成后合并为一个 generation，all-or-nothing 原子发布；partial 模式后置。
 - ~~任务工作区的存放位置与并发隔离策略~~ → 已定：microsandbox 本地/自托管沙箱，任务间以独立 microVM 隔离；Vercel 部署方案搁置。
 - ~~是否需要多用户与权限体系~~ → 已定：飞书 OAuth 登录，每个登录人创建一条用户记录，整站保护（除 /login 与 OAuth 回调外页面和 API 都要求登录）；共用一套部署，做**两级 RBAC**（整站级 + 项目级角色），菜单按权限码过滤，完整设计见 `docs/architecture-rbac-menu.md`。
+- Delivery merge webhook 的公网入口与签名密钥由部署环境配置；本地无公网回调时使用定时 reconcile + 手动同步兜底。

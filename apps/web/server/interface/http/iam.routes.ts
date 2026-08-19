@@ -8,6 +8,7 @@ import { createAddProjectMember } from "@/server/application/iam/add-project-mem
 import { createAssignSiteRole } from "@/server/application/iam/assign-site-role";
 import { createGetMyPermissions } from "@/server/application/iam/get-my-permissions";
 import { createListRoles } from "@/server/application/iam/list-roles";
+import { createListProjectMembers } from "@/server/application/iam/list-project-members";
 import { createListUsers } from "@/server/application/iam/list-users";
 import { createRemoveProjectMember } from "@/server/application/iam/remove-project-member";
 import { createUpdateProjectMember } from "@/server/application/iam/update-project-member";
@@ -113,6 +114,13 @@ export const iamRoutes = new Hono<{ Variables: AuthVariables }>()
     });
     if (!result.ok) return errorResponse(c, result.error);
     return c.json({ ok: true });
+  })
+
+  // 项目成员只读视图：项目概览展示负责人和协作者，不在此实现管理界面。
+  .get("/projects/:id/members", async (c) => {
+    const result = await createListProjectMembers({ iamStore, logger })({ actor: actorOf(c), projectId: c.req.param("id") });
+    if (!result.ok) return errorResponse(c, result.error);
+    return c.json(result.value);
   })
 
   // 拉人进项目（项目级 member:manage 判定在用例内做）。

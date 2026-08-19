@@ -38,6 +38,11 @@ export const getGitHubEnv = makeEnvGetter(
   }),
 );
 
+/** GitHub webhook 签名密钥；只在 webhook 请求到达时校验。 */
+export const getGitHubWebhookEnv = makeEnvGetter(
+  z.object({ GITHUB_WEBHOOK_SECRET: z.string().min(16, "GITHUB_WEBHOOK_SECRET 未配置或过短") }),
+);
+
 /** Claude Agent SDK 使用的 Anthropic API key。 */
 export const getAnthropicEnv = makeEnvGetter(
   z.object({

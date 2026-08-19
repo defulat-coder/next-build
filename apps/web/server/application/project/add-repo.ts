@@ -34,16 +34,35 @@ export function createAddRepo(deps: { projectStore: ProjectStore; gateway: GitHu
     if (!existing.value) {
       return logFailure({ code: "PROJECT_NOT_FOUND", kind: "business", message: "项目不存在" }, input.projectId);
     }
+    if (existing.value.project.archivedAt) {
+      return logFailure({ code: "PROJECT_ARCHIVED", kind: "business", message: "项目已归档，只能查看历史配置" }, input.projectId);
+    }
 
     const allowed = checkProjectPermission(input.actor, input.projectId, "repo:manage", deps.logger);
     if (!allowed.ok) return allowed;
 
     const checked = await deps.gateway.checkRepo(input.repo);
-    let repository: { accessStatus: "available" | "unavailable"; defaultBranch: string | null; repo: string };
+    let repository: {
+      accessStatus: "available" | "unavailable";
+      defaultBranch: string | null;
+      repo: string;
+      providerRepoId: string | null;
+      canPush: boolean | null;
+      canCreatePr: boolean | null;
+      lastExecutionValidatedAt: Date | null;
+    };
     if (checked.ok) {
-      repository = { ...checked.value, accessStatus: "available" };
+      repository = { ...checked.value, accessStatus: "available", lastExecutionValidatedAt: new Date() };
     } else if (checked.error.code === "GITHUB_REPO_NOT_FOUND") {
-      repository = { accessStatus: "unavailable", defaultBranch: null, repo: input.repo };
+      repository = {
+        accessStatus: "unavailable",
+        canCreatePr: null,
+        canPush: null,
+        defaultBranch: null,
+        lastExecutionValidatedAt: null,
+        providerRepoId: null,
+        repo: input.repo,
+      };
     } else {
       return logFailure(checked.error, input.projectId);
     }
@@ -51,7 +70,11 @@ export function createAddRepo(deps: { projectStore: ProjectStore; gateway: GitHu
     const added = await deps.projectStore.addRepo({
       accessStatus: repository.accessStatus,
       defaultBranch: repository.defaultBranch,
+      canCreatePr: repository.canCreatePr,
+      canPush: repository.canPush,
+      lastExecutionValidatedAt: repository.lastExecutionValidatedAt,
       projectId: input.projectId,
+      providerRepoId: repository.providerRepoId,
       repo: repository.repo,
     });
     if (!added.ok) return logFailure(projectErrorFromStore(added.error), input.projectId);

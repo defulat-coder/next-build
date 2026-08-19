@@ -49,11 +49,11 @@ describe("seedIam", () => {
     const roleRows = db.select().from(schema.roles).all();
     expect(roleRows).toHaveLength(6);
     expect(roleRows.every((r) => r.builtIn)).toBe(true);
-    expect(db.select().from(schema.permissions).all()).toHaveLength(13);
+    expect(db.select().from(schema.permissions).all()).toHaveLength(14);
 
     const adminRole = roleRows.find((r) => r.code === "site:admin");
     const mappings = db.select().from(schema.rolePermissions).all();
-    expect(mappings.filter((m) => m.roleId === adminRole?.id)).toHaveLength(13);
+    expect(mappings.filter((m) => m.roleId === adminRole?.id)).toHaveLength(14);
   });
 
   it("种子不清空库内已有映射：缺失的默认映射补齐，管理页配置的额外映射保留", () => {
@@ -225,7 +225,7 @@ describe("IamStore", () => {
     expect(result.value).toHaveLength(6);
 
     const admin = result.value.find((r) => r.code === "site:admin");
-    expect(admin?.permissions).toHaveLength(13);
+    expect(admin?.permissions).toHaveLength(14);
     expect(admin?.permissions).toContain("role:manage");
     expect(admin?.name).toBe("整站管理员");
     const member = result.value.find((r) => r.code === "site:member");

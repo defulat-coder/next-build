@@ -8,6 +8,9 @@ import { authGuard, type AuthVariables } from "@/server/interface/http/auth-guar
 import { authRoutes } from "@/server/interface/http/auth.routes";
 import { iamRoutes } from "@/server/interface/http/iam.routes";
 import { projectRoutes } from "@/server/interface/http/project.routes";
+import { taskRoutes } from "@/server/interface/http/task.routes";
+import { knowledgeRoutes } from "@/server/interface/http/knowledge.routes";
+import { githubWebhookRoutes } from "@/server/interface/http/github-webhook.routes";
 
 const app = new Hono<{ Variables: AuthVariables }>().basePath("/api");
 
@@ -47,6 +50,9 @@ app.use("*", authGuard);
 app.get("/health", (c) => c.json({ ok: true }));
 app.route("/auth", authRoutes);
 app.route("/projects", projectRoutes);
+app.route("/projects", taskRoutes);
+app.route("/projects", knowledgeRoutes);
+app.route("/webhooks", githubWebhookRoutes);
 // /me/permissions、/admin/users、/projects/:id/members 同挂一处（路径互不重叠，Hono 按注册匹配）。
 app.route("/", iamRoutes);
 

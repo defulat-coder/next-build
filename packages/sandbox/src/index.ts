@@ -1,48 +1,120 @@
-/**
- * 沙箱层窄接口（见 PRODUCT.md「创建任务」）：任务工作区的创建、命令执行、文件读写与销毁。
- * 第一个实现为 microsandbox，业务代码只依赖本接口，便于将来替换实现。
- */
+import { err, ok, type Result } from "@next-build/result";
+import { MiB, Sandbox as Microsandbox } from "microsandbox";
 
+export interface SandboxError {
+  code: "SANDBOX_CREATE_FAILED" | "SANDBOX_NOT_FOUND" | "SANDBOX_EXEC_FAILED" | "SANDBOX_FS_FAILED" | "SANDBOX_DESTROY_FAILED";
+  message: string;
+  cause?: unknown;
+}
 export interface SandboxCreateOptions {
-  /** 沙箱名称，项目内唯一；对应一个任务。 */
   name: string;
-  /** 注入沙箱的环境变量（如 ANTHROPIC_API_KEY、GITHUB_TOKEN）。 */
   env?: Record<string, string>;
-  /** 创建时克隆的 git 仓库源；URL 可内嵌凭据。 */
-  source?: {
-    url: string;
-    /** 浅克隆深度，大仓库建议 1 */
-    depth?: number;
-    /** 分支或 commit */
-    revision?: string;
+  secrets?: Array<{ envVar: string; value: string; allowedHost: string }>;
+  source?: { url: string; depth?: number; revision?: string };
+}
+export interface ExecOptions { cwd?: string; env?: Record<string, string>; detached?: boolean }
+export interface ExecResult { exitCode: number | null; stdout: string; stderr: string }
+export interface Sandbox {
+  readonly name: string;
+  exec(command: string, args?: string[], opts?: ExecOptions): Promise<Result<ExecResult, SandboxError>>;
+  readFile(path: string): Promise<Result<Uint8Array | null, SandboxError>>;
+  writeFile(path: string, content: Uint8Array | string): Promise<Result<void, SandboxError>>;
+  destroy(): Promise<Result<void, SandboxError>>;
+}
+export interface SandboxProvider {
+  create(opts: SandboxCreateOptions): Promise<Result<Sandbox, SandboxError>>;
+  get(name: string): Promise<Result<Sandbox, SandboxError>>;
+}
+
+function wrap(sandbox: Microsandbox): Sandbox {
+  return {
+    name: sandbox.name,
+    async exec(command, args = [], opts = {}) {
+      try {
+        if (opts.detached) {
+          await sandbox.execStreamWith(command, (builder) => {
+            let next = builder.args(args);
+            if (opts.cwd) next = next.cwd(opts.cwd);
+            for (const [key, value] of Object.entries(opts.env ?? {})) next = next.env(key, value);
+            return next;
+          });
+          return ok({ exitCode: null, stderr: "", stdout: "" });
+        }
+        const output = await sandbox.execWith(command, (builder) => {
+          let next = builder.args(args);
+          if (opts.cwd) next = next.cwd(opts.cwd);
+          for (const [key, value] of Object.entries(opts.env ?? {})) next = next.env(key, value);
+          return next;
+        });
+        return ok({ exitCode: output.code, stderr: output.stderr(), stdout: output.stdout() });
+      } catch (cause) {
+        return err({ cause, code: "SANDBOX_EXEC_FAILED", message: `沙箱命令执行失败：${command}` });
+      }
+    },
+    async readFile(path) {
+      try { return ok(await sandbox.fs().exists(path) ? await sandbox.fs().read(path) : null); }
+      catch (cause) { return err({ cause, code: "SANDBOX_FS_FAILED", message: `读取沙箱文件失败：${path}` }); }
+    },
+    async writeFile(path, content) {
+      try { await sandbox.fs().write(path, content); return ok(undefined); }
+      catch (cause) { return err({ cause, code: "SANDBOX_FS_FAILED", message: `写入沙箱文件失败：${path}` }); }
+    },
+    async destroy() {
+      try { await sandbox.stopWithTimeout(10_000); await Microsandbox.remove(sandbox.name); return ok(undefined); }
+      catch (cause) { return err({ cause, code: "SANDBOX_DESTROY_FAILED", message: "销毁沙箱失败" }); }
+    },
   };
 }
 
-export interface ExecOptions {
-  cwd?: string;
-  env?: Record<string, string>;
-  /** true 时立即返回（exitCode 为 null），进程在沙箱内后台运行。 */
-  detached?: boolean;
-}
-
-export interface ExecResult {
-  /** detached 模式下为 null，表示进程仍在运行。 */
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
-}
-
-export interface Sandbox {
-  readonly name: string;
-  exec(command: string, args?: string[], opts?: ExecOptions): Promise<ExecResult>;
-  readFile(path: string): Promise<Uint8Array | null>;
-  writeFile(path: string, content: Uint8Array | string): Promise<void>;
-  /** 销毁沙箱并释放资源；幂等。 */
-  destroy(): Promise<void>;
-}
-
-export interface SandboxProvider {
-  create(opts: SandboxCreateOptions): Promise<Sandbox>;
-  /** 按名称取回已存在的沙箱（如任务中断后恢复）。 */
-  get(name: string): Promise<Sandbox>;
+export function createMicrosandboxProvider(options?: { image?: string }): SandboxProvider {
+  return {
+    async create(opts) {
+      try {
+        let builder = Microsandbox.builder(opts.name)
+          .image(options?.image ?? "node:22-bookworm")
+          .cpus(2)
+          .memory(MiB(2048))
+          .workdir("/workspace")
+          .envs(opts.env ?? {})
+          .detached(true)
+          .maxDuration(3600)
+          .replace();
+        for (const secret of opts.secrets ?? []) {
+          builder = builder.secretEnv(secret.envVar, secret.value, secret.allowedHost);
+        }
+        const sandbox = await builder.create();
+        const wrapped = wrap(sandbox);
+        if (opts.source) {
+          const clone = await wrapped.exec("git", ["clone", "--depth", String(opts.source.depth ?? 1), opts.source.url, "."], { cwd: "/workspace" });
+          if (!clone.ok || clone.value.exitCode !== 0) {
+            await wrapped.destroy();
+            return err(clone.ok
+              ? { code: "SANDBOX_CREATE_FAILED", message: clone.value.stderr || "克隆仓库失败" }
+              : { ...clone.error, code: "SANDBOX_CREATE_FAILED" });
+          }
+          if (opts.source.revision) {
+            const checkout = await wrapped.exec("git", ["checkout", opts.source.revision], { cwd: "/workspace" });
+            if (!checkout.ok || checkout.value.exitCode !== 0) {
+              await wrapped.destroy();
+              return err(checkout.ok
+                ? { code: "SANDBOX_CREATE_FAILED", message: checkout.value.stderr || "检出任务基线失败" }
+                : { ...checkout.error, code: "SANDBOX_CREATE_FAILED" });
+            }
+          }
+        }
+        return ok(wrapped);
+      } catch (cause) {
+        return err({ cause, code: "SANDBOX_CREATE_FAILED", message: "创建 microsandbox 失败" });
+      }
+    },
+    async get(name) {
+      try {
+        const handle = await Microsandbox.get(name);
+        const sandbox = handle.status === "running" ? await handle.connect() : await handle.startDetached();
+        return ok(wrap(sandbox));
+      } catch (cause) {
+        return err({ cause, code: "SANDBOX_NOT_FOUND", message: `沙箱 ${name} 不存在或无法恢复` });
+      }
+    },
+  };
 }

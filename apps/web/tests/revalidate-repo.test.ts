@@ -9,22 +9,40 @@ import type { GitHubGateway, ProjectStore } from "@/server/domains/project/ports
 
 const now = new Date("2026-08-19T08:00:00Z");
 const project = {
+  archivedAt: null,
+  completedAt: null,
+  completedBy: null,
+  completionCriteriaResults: [],
+  completionSummary: null,
   createdAt: new Date("2026-01-01"),
   createdBy: "u-1",
   description: null,
+  desiredOutcome: null,
   id: "p-1",
   name: "demo",
+  nonGoals: null,
+  problemStatement: null,
+  successCriteria: [],
+  targetDate: null,
+  lifecycleStatus: "planned" as const,
   updatedAt: new Date("2026-01-01"),
+  version: 1,
 };
 const repo = {
   accessStatus: "available" as const,
   addedAt: new Date("2026-01-01"),
   defaultBranch: "main",
+  canCreatePr: true,
+  canPush: true,
+  detachedAt: null,
   id: "r-1",
   isPrimary: true,
+  lastExecutionValidatedAt: new Date("2026-01-01"),
   lastValidatedAt: new Date("2026-01-01"),
   projectId: "p-1",
+  providerRepoId: "1",
   repo: "octo/old",
+  version: 1,
 };
 const actor: ActorContext = {
   permissions: {
@@ -40,6 +58,7 @@ function makeDeps() {
   const projectStore: ProjectStore = {
     addRepo: vi.fn(),
     createProject: vi.fn(),
+    archiveProject: vi.fn(),
     deleteProject: vi.fn(),
     getProject: vi.fn(async () => ok({ primaryRepo: repo, project, repos: [repo] })),
     listProjects: vi.fn(),
@@ -49,7 +68,12 @@ function makeDeps() {
     updateRepoValidation: vi.fn(async (_id, input) => ok({ ...repo, ...input })),
   };
   const gateway: GitHubGateway = {
-    checkRepo: vi.fn(async () => ok({ defaultBranch: "trunk", repo: "Octo/Renamed" })),
+    checkRepo: vi.fn(async () => ok({ canCreatePr: true, canPush: true, defaultBranch: "trunk", providerRepoId: "2", repo: "Octo/Renamed" })),
+    createDraftPullRequest: vi.fn(),
+    getPullRequest: vi.fn(),
+    findPullRequestByHead: vi.fn(),
+    resolveRepoHead: vi.fn(),
+    resolveExecutionTarget: vi.fn(),
   };
   return { gateway, logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() }, projectStore };
 }
@@ -71,8 +95,13 @@ describe("revalidateRepo", () => {
     expect(result.ok).toBe(true);
     expect(deps.projectStore.updateRepoValidation).toHaveBeenCalledWith("r-1", {
       accessStatus: "available",
+      canCreatePr: true,
+      canPush: true,
       defaultBranch: "trunk",
+      expectedVersion: 1,
+      lastExecutionValidatedAt: now,
       lastValidatedAt: now,
+      providerRepoId: "2",
       repo: "Octo/Renamed",
     });
     expect(deps.logger.info).toHaveBeenCalledWith(
@@ -93,6 +122,7 @@ describe("revalidateRepo", () => {
     expect(deps.projectStore.updateRepoValidation).toHaveBeenCalledWith("r-1", {
       accessStatus: "unavailable",
       defaultBranch: "main",
+      expectedVersion: 1,
       lastValidatedAt: now,
       repo: "octo/old",
     });

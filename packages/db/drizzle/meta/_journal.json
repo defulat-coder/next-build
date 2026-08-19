@@ -36,6 +36,48 @@
       "when": 1787148106769,
       "tag": "0004_stiff_war_machine",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1787154560969,
+      "tag": "0005_loud_radioactive_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1787158103226,
+      "tag": "0006_smiling_sabretooth",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1787158520720,
+      "tag": "0007_acoustic_ozymandias",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1787158816983,
+      "tag": "0008_lean_beast",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1787158994825,
+      "tag": "0009_curious_maginty",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1787159394336,
+      "tag": "0010_tan_johnny_blaze",
+      "breakpoints": true
     }
   ]
 }

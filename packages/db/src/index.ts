@@ -60,6 +60,37 @@ export type {
   UserWithRoles,
 } from "./iam-store";
 export type { Logger } from "./logger";
+export { createOutboxStore } from "./outbox-store";
+export type { OutboxEvent, OutboxStore } from "./outbox-store";
+export { createKnowledgeStore } from "./knowledge-store";
+export type {
+  KnowledgeGeneration,
+  KnowledgeGenerationStatus,
+  KnowledgeGenerationTrigger,
+  KnowledgeDocument,
+  KnowledgeSource,
+  KnowledgeSourceFile,
+  KnowledgeStore,
+} from "./knowledge-store";
+export { createTaskStore } from "./task-store";
+export type {
+  AcceptanceCriterionResult,
+  AcceptanceEvidence,
+  AcceptanceInvalidError,
+  AcceptanceNotReadyError,
+  Delivery,
+  DeliveryStatus,
+  Task,
+  TaskDetail,
+  TaskIdempotencyConflictError,
+  TaskRun,
+  TaskRunStage,
+  TaskInvalidTransitionStoreError,
+  TaskAcceptance,
+  TaskStatus,
+  TaskStore,
+  TaskStoreBusinessError,
+} from "./task-store";
 // 权限码常量主子路径双导出；前端用纯 TS 子路径 `@next-build/db/permissions`，避免连带 better-sqlite3。
 export {
   BUILTIN_ROLES,
@@ -72,11 +103,17 @@ export {
 export type { PermissionCode, ProjectRoleCode, RoleCode, SiteRoleCode } from "./permissions";
 export { createProjectStore } from "./project-store";
 export type {
+  ConcurrencyConflictError,
   Project,
   ProjectDetail,
+  ProjectLifecycleStatus,
   ProjectRepo,
   ProjectRepoExistsError,
+  ProjectRepoNotFoundError,
+  ProjectRepoUnavailableError,
   ProjectStore,
+  ProjectStoreBusinessError,
   ProjectSummary,
+  PrimaryRepoReplacementRequiredError,
   RepoAccessStatus,
 } from "./project-store";

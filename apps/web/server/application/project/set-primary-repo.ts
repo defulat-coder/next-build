@@ -18,6 +18,7 @@ export function createSetPrimaryRepo(deps: { projectStore: ProjectStore; logger:
     const existing = await deps.projectStore.getProject(input.projectId);
     if (!existing.ok) return err(projectErrorFromStore(existing.error));
     if (!existing.value) return err({ code: "PROJECT_NOT_FOUND", kind: "business", message: "项目不存在" });
+    if (existing.value.project.archivedAt) return err({ code: "PROJECT_ARCHIVED", kind: "business", message: "项目已归档，只能查看历史配置" });
 
     const allowed = checkProjectPermission(input.actor, input.projectId, "repo:manage", deps.logger);
     if (!allowed.ok) return allowed;
@@ -29,7 +30,7 @@ export function createSetPrimaryRepo(deps: { projectStore: ProjectStore; logger:
     }
     if (repo.isPrimary) return ok(repo);
 
-    const changed = await deps.projectStore.setPrimaryRepo(input.projectId, input.repoId);
+    const changed = await deps.projectStore.setPrimaryRepo(input.projectId, input.repoId, repo.version);
     if (!changed.ok) return err(projectErrorFromStore(changed.error));
     deps.logger.info(
       {
@@ -41,6 +42,6 @@ export function createSetPrimaryRepo(deps: { projectStore: ProjectStore; logger:
       },
       "项目主仓库已切换",
     );
-    return ok({ ...repo, isPrimary: true });
+    return ok({ ...repo, isPrimary: true, version: repo.version + 1 });
   };
 }

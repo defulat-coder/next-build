@@ -25,7 +25,7 @@ export interface AuthVariables {
  */
 export const authGuard = createMiddleware<{ Variables: AuthVariables }>(async (c, next) => {
   const path = c.req.path;
-  if (path.startsWith("/api/auth/") || path === "/api/health") {
+  if (path.startsWith("/api/auth/") || path === "/api/health" || path === "/api/webhooks/github") {
     return next();
   }
   const token = getCookie(c, SESSION_COOKIE);

@@ -18,6 +18,7 @@ export function createRevalidateRepo(deps: { projectStore: ProjectStore; gateway
     const existing = await deps.projectStore.getProject(input.projectId);
     if (!existing.ok) return err(projectErrorFromStore(existing.error));
     if (!existing.value) return err({ code: "PROJECT_NOT_FOUND", kind: "business", message: "项目不存在" });
+    if (existing.value.project.archivedAt) return err({ code: "PROJECT_ARCHIVED", kind: "business", message: "项目已归档，只能查看历史配置" });
 
     const allowed = checkProjectPermission(input.actor, input.projectId, "repo:manage", deps.logger);
     if (!allowed.ok) return allowed;
@@ -32,9 +33,18 @@ export function createRevalidateRepo(deps: { projectStore: ProjectStore; gateway
       defaultBranch: string | null;
       lastValidatedAt: Date;
       repo: string;
+      providerRepoId?: string | null;
+      canPush?: boolean | null;
+      canCreatePr?: boolean | null;
+      lastExecutionValidatedAt?: Date | null;
     };
     if (checked.ok) {
-      validation = { ...checked.value, accessStatus: "available", lastValidatedAt: validatedAt };
+      validation = {
+        ...checked.value,
+        accessStatus: "available",
+        lastExecutionValidatedAt: validatedAt,
+        lastValidatedAt: validatedAt,
+      };
     } else if (checked.error.code === "GITHUB_REPO_NOT_FOUND") {
       validation = {
         accessStatus: "unavailable",
@@ -58,7 +68,7 @@ export function createRevalidateRepo(deps: { projectStore: ProjectStore; gateway
       return err(checked.error);
     }
 
-    const updated = await deps.projectStore.updateRepoValidation(repo.id, validation);
+    const updated = await deps.projectStore.updateRepoValidation(repo.id, { ...validation, expectedVersion: repo.version });
     if (!updated.ok) return err(projectErrorFromStore(updated.error));
     if (!updated.value) {
       return err({ code: "PROJECT_REPO_NOT_FOUND", kind: "business", message: "仓库不在该项目中" });

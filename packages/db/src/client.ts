@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, rmSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 
 import Database from "better-sqlite3";
@@ -9,6 +9,36 @@ import * as schema from "./schema";
 import type { Logger } from "./logger";
 
 export type Db = BetterSQLite3Database<typeof schema>;
+
+const migrationWaitBuffer = new Int32Array(new SharedArrayBuffer(4));
+
+/** Drizzle 在 BEGIN 前读取迁移游标；Next 多 worker 启动时需用跨进程锁串行化这段读写。 */
+function withMigrationLock<T>(dbPath: string, migrateOnce: () => T): T {
+  if (dbPath === ":memory:") return migrateOnce();
+  const lockPath = `${dbPath}.migration.lock`;
+  const deadline = Date.now() + 30_000;
+  while (true) {
+    try {
+      mkdirSync(lockPath);
+      break;
+    } catch (cause) {
+      if ((cause as NodeJS.ErrnoException).code !== "EEXIST") throw cause;
+      try {
+        if (Date.now() - statSync(lockPath).mtimeMs > 120_000) {
+          rmSync(lockPath, { force: true, recursive: true });
+          continue;
+        }
+      } catch {}
+      if (Date.now() >= deadline) throw new Error(`等待数据库迁移锁超时：${lockPath}`);
+      Atomics.wait(migrationWaitBuffer, 0, 0, 25);
+    }
+  }
+  try {
+    return migrateOnce();
+  } finally {
+    rmSync(lockPath, { force: true, recursive: true });
+  }
+}
 
 /**
  * 打开（必要时创建）SQLite 库并执行 Drizzle 迁移。
@@ -27,7 +57,7 @@ export function createDb(options: { dbPath: string; migrationsFolder: string; lo
   const db = drizzle(sqlite, { schema });
   const start = performance.now();
   try {
-    migrate(db, { migrationsFolder: options.migrationsFolder });
+    withMigrationLock(options.dbPath, () => migrate(db, { migrationsFolder: options.migrationsFolder }));
   } catch (cause) {
     options.logger?.error(
       { err: cause, "error.code": "DB_MIGRATION_FAILED", event: "db.error" },

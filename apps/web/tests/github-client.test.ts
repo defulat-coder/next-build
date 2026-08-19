@@ -39,9 +39,18 @@ describe("parseRepoInput", () => {
 
 describe("checkRepo", () => {
   it("存在且可访问时返回规范化全名与默认分支，并带 Bearer 头", async () => {
-    mockFetch({ default_branch: "main", full_name: "octocat/hello-world" });
+    mockFetch({ default_branch: "main", full_name: "octocat/hello-world", id: 1, permissions: { push: true } });
     const result = await checkRepo(config, "octocat/hello-world");
-    expect(result).toEqual({ ok: true, value: { defaultBranch: "main", repo: "octocat/hello-world" } });
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        canCreatePr: true,
+        canPush: true,
+        defaultBranch: "main",
+        providerRepoId: "1",
+        repo: "octocat/hello-world",
+      },
+    });
 
     const fetchMock = vi.mocked(fetch);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];

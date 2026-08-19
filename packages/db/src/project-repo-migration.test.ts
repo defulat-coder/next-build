@@ -56,3 +56,56 @@ describe("project repo migration 0004", () => {
     expect(() => sqlite.prepare("UPDATE project_repos SET is_primary = 1 WHERE id = 'r2'").run()).toThrow();
   });
 });
+
+describe("delivery chain migration 0005", () => {
+  it("为既有项目与仓库回填版本默认值，并创建任务交付表", () => {
+    const sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+    for (const file of [
+      "0000_milky_klaw.sql",
+      "0001_lonely_shiver_man.sql",
+      "0002_broken_tombstone.sql",
+      "0003_promote-members-to-admin.sql",
+      "0004_stiff_war_machine.sql",
+    ]) {
+      sqlite.exec(readFileSync(join(migrationsFolder, file), "utf8"));
+    }
+    sqlite.prepare("INSERT INTO users (id, feishu_open_id, name, created_at, last_login_at) VALUES (?, ?, ?, ?, ?)")
+      .run("u1", "ou_1", "张三", 1, 1);
+    sqlite.prepare("INSERT INTO projects (id, name, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+      .run("p1", "既有项目", "u1", 1, 1);
+    sqlite.prepare(
+      "INSERT INTO project_repos (id, project_id, repo, default_branch, is_primary, access_status, last_validated_at, added_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    ).run("r1", "p1", "octo/one", "main", 1, "available", 1, 1);
+
+    sqlite.exec(readFileSync(join(migrationsFolder, "0005_loud_radioactive_man.sql"), "utf8"));
+
+    expect(sqlite.prepare("SELECT version, lifecycle_status, success_criteria FROM projects WHERE id = 'p1'").get())
+      .toEqual({ lifecycle_status: "planned", success_criteria: "[]", version: 1 });
+    expect(sqlite.prepare("SELECT version, detached_at FROM project_repos WHERE id = 'r1'").get())
+      .toEqual({ detached_at: null, version: 1 });
+    const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[];
+    expect(tables.map((row) => row.name)).toEqual(expect.arrayContaining(["tasks", "task_runs", "deliveries", "knowledge_generations"]));
+  });
+});
+
+describe("business acceptance migration 0006", () => {
+  it("为既有任务回填 pending 验收，并把 merged Task 迁为 acceptance_pending", () => {
+    const sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+    for (const file of [
+      "0000_milky_klaw.sql", "0001_lonely_shiver_man.sql", "0002_broken_tombstone.sql",
+      "0003_promote-members-to-admin.sql", "0004_stiff_war_machine.sql", "0005_loud_radioactive_man.sql",
+    ]) sqlite.exec(readFileSync(join(migrationsFolder, file), "utf8"));
+    sqlite.prepare("INSERT INTO users (id, feishu_open_id, name, created_at, last_login_at) VALUES ('u1','ou_1','张三',1,1)").run();
+    sqlite.prepare("INSERT INTO projects (id,name,created_by,created_at,updated_at) VALUES ('p1','项目','u1',1,1)").run();
+    sqlite.prepare("INSERT INTO project_repos (id,project_id,repo,default_branch,is_primary,access_status,last_validated_at,added_at) VALUES ('r1','p1','octo/demo','main',1,'available',1,1)").run();
+    sqlite.prepare("INSERT INTO tasks (id,project_id,project_repo_id,title,requirement,acceptance_criteria,validation_commands,created_by,status,idempotency_key,command_fingerprint,canonical_repo,default_branch,base_sha,validation_version,branch,created_at,updated_at) VALUES ('t1','p1','r1','任务','需求','[\"通过\"]','[\"pnpm test\"]','u1','merged','key','fp','octo/demo','main','abc',1,'agent/t1',1,1)").run();
+
+    sqlite.exec(readFileSync(join(migrationsFolder, "0006_smiling_sabretooth.sql"), "utf8"));
+
+    expect(sqlite.prepare("SELECT status FROM tasks WHERE id='t1'").get()).toEqual({ status: "acceptance_pending" });
+    expect(sqlite.prepare("SELECT task_id, status, criteria_results FROM task_acceptances WHERE task_id='t1'").get())
+      .toEqual({ criteria_results: "[]", status: "pending", task_id: "t1" });
+  });
+});

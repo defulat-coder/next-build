@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { err, ok, type Result } from "@next-build/result";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import type { Db } from "./client";
 import type { Logger } from "./logger";
@@ -12,6 +12,18 @@ export interface Project {
   id: string;
   name: string;
   description: string | null;
+  problemStatement: string | null;
+  desiredOutcome: string | null;
+  successCriteria: string[];
+  nonGoals: string | null;
+  targetDate: Date | null;
+  lifecycleStatus: ProjectLifecycleStatus;
+  archivedAt: Date | null;
+  completionSummary: string | null;
+  completionCriteriaResults: Array<{ criterion: string; passed: boolean; evidence?: string }>;
+  completedAt: Date | null;
+  completedBy: string | null;
+  version: number;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -26,10 +38,17 @@ export interface ProjectRepo {
   isPrimary: boolean;
   accessStatus: RepoAccessStatus;
   lastValidatedAt: Date;
+  providerRepoId: string | null;
+  canPush: boolean | null;
+  canCreatePr: boolean | null;
+  lastExecutionValidatedAt: Date | null;
+  detachedAt: Date | null;
+  version: number;
   addedAt: Date;
 }
 
 export type RepoAccessStatus = "available" | "unavailable";
+export type ProjectLifecycleStatus = "planned" | "active" | "blocked" | "completed" | "archived";
 
 export interface ProjectDetail {
   project: Project;
@@ -50,17 +69,69 @@ export interface ProjectRepoExistsError {
   cause?: unknown;
 }
 
+export interface ConcurrencyConflictError {
+  code: "CONCURRENCY_CONFLICT";
+  message: string;
+  cause?: unknown;
+}
+
+export interface ProjectRepoNotFoundError {
+  code: "PROJECT_REPO_NOT_FOUND";
+  message: string;
+}
+
+export interface ProjectRepoUnavailableError {
+  code: "PROJECT_REPO_UNAVAILABLE";
+  message: string;
+}
+
+export interface PrimaryRepoReplacementRequiredError {
+  code: "PRIMARY_REPO_REPLACEMENT_REQUIRED";
+  message: string;
+}
+
+export type ProjectStoreBusinessError =
+  | ProjectRepoExistsError
+  | ConcurrencyConflictError
+  | ProjectRepoNotFoundError
+  | ProjectRepoUnavailableError
+  | PrimaryRepoReplacementRequiredError;
+
 export interface ProjectStore {
   /** 全部项目（含各项目仓库数），按创建时间倒序。 */
   listProjects(): Promise<Result<ProjectSummary[], DbError>>;
   /** 项目详情（含仓库列表）；不存在返回 null。 */
   getProject(id: string): Promise<Result<ProjectDetail | null, DbError>>;
-  createProject(input: { name: string; description?: string; createdBy: string }): Promise<Result<Project, DbError>>;
+  createProject(input: {
+    name: string;
+    description?: string;
+    problemStatement?: string;
+    desiredOutcome?: string;
+    successCriteria?: string[];
+    nonGoals?: string;
+    targetDate?: Date;
+    createdBy: string;
+  }): Promise<Result<Project, DbError>>;
   /** 更新名称/描述；不存在返回 null。 */
   updateProject(
     id: string,
-    input: { name: string; description?: string | null },
-  ): Promise<Result<Project | null, DbError>>;
+    input: {
+      name: string;
+      description?: string | null;
+      problemStatement?: string | null;
+      desiredOutcome?: string | null;
+      successCriteria?: string[];
+      nonGoals?: string | null;
+      targetDate?: Date | null;
+      lifecycleStatus?: Exclude<ProjectLifecycleStatus, "archived">;
+      completionSummary?: string | null;
+      completionCriteriaResults?: Array<{ criterion: string; passed: boolean; evidence?: string }>;
+      completedAt?: Date | null;
+      completedBy?: string | null;
+      expectedVersion: number;
+    },
+  ): Promise<Result<Project | null, DbError | ConcurrencyConflictError>>;
+  archiveProject(id: string, expectedVersion: number): Promise<Result<Project | null, DbError | ConcurrencyConflictError>>;
   /** 删除项目；仓库经外键级联删除。 */
   deleteProject(id: string): Promise<Result<void, DbError>>;
   /** 挂载仓库；同项目重复添加返回业务错误 PROJECT_REPO_EXISTS。 */
@@ -69,9 +140,17 @@ export interface ProjectStore {
     repo: string;
     defaultBranch: string | null;
     accessStatus: RepoAccessStatus;
+    providerRepoId?: string | null;
+    canPush?: boolean | null;
+    canCreatePr?: boolean | null;
+    lastExecutionValidatedAt?: Date | null;
   }): Promise<Result<ProjectRepo, DbError | ProjectRepoExistsError>>;
   /** 主仓切换在单一事务内完成。 */
-  setPrimaryRepo(projectId: string, repoId: string): Promise<Result<void, DbError>>;
+  setPrimaryRepo(
+    projectId: string,
+    repoId: string,
+    expectedVersion: number,
+  ): Promise<Result<void, DbError | ProjectStoreBusinessError>>;
   /** 更新一次确定性校验结果；规范仓库名冲突仍按重复仓库返回。 */
   updateRepoValidation(
     repoId: string,
@@ -80,14 +159,31 @@ export interface ProjectStore {
       defaultBranch: string | null;
       accessStatus: RepoAccessStatus;
       lastValidatedAt: Date;
+      providerRepoId?: string | null;
+      canPush?: boolean | null;
+      canCreatePr?: boolean | null;
+      lastExecutionValidatedAt?: Date | null;
+      expectedVersion: number;
     },
-  ): Promise<Result<ProjectRepo | null, DbError | ProjectRepoExistsError>>;
+  ): Promise<Result<ProjectRepo | null, DbError | ProjectStoreBusinessError>>;
   /** 删除主仓时可显式传替代主仓；切换与删除在同一事务内完成。 */
   removeRepo(input: {
     projectId: string;
     repoId: string;
+    expectedVersion: number;
     replacementPrimaryRepoId?: string;
-  }): Promise<Result<void, DbError>>;
+    replacementExpectedVersion?: number;
+  }): Promise<Result<void, DbError | ProjectStoreBusinessError>>;
+}
+
+type ProjectRow = typeof projects.$inferSelect;
+
+function toProject(row: ProjectRow): Project {
+  return {
+    ...row,
+    completionCriteriaResults: JSON.parse(row.completionCriteriaResults) as Array<{ criterion: string; passed: boolean; evidence?: string }>,
+    successCriteria: JSON.parse(row.successCriteria) as string[],
+  };
 }
 
 function isUniqueViolation(cause: unknown): boolean {
@@ -97,6 +193,17 @@ function isUniqueViolation(cause: unknown): boolean {
     "code" in cause &&
     (cause as { code?: string }).code === "SQLITE_CONSTRAINT_UNIQUE"
   );
+}
+
+function isProjectStoreBusinessError(cause: unknown): cause is ProjectStoreBusinessError {
+  if (typeof cause !== "object" || cause === null || !("code" in cause)) return false;
+  return [
+    "PROJECT_REPO_EXISTS",
+    "CONCURRENCY_CONFLICT",
+    "PROJECT_REPO_NOT_FOUND",
+    "PROJECT_REPO_UNAVAILABLE",
+    "PRIMARY_REPO_REPLACEMENT_REQUIRED",
+  ].includes(String((cause as { code: unknown }).code));
 }
 
 export function createProjectStore(db: Db, options?: { logger?: Logger }): ProjectStore {
@@ -114,6 +221,7 @@ export function createProjectStore(db: Db, options?: { logger?: Logger }): Proje
         const repoRows = db
           .select()
           .from(projectRepos)
+          .where(isNull(projectRepos.detachedAt))
           .orderBy(sql`${projectRepos.addedAt} asc`, sql`${projectRepos.id} asc`)
           .all();
         const reposByProject = new Map<string, ProjectRepo[]>();
@@ -126,7 +234,7 @@ export function createProjectStore(db: Db, options?: { logger?: Logger }): Proje
           projectRows.map((project) => {
             const repos = reposByProject.get(project.id) ?? [];
             return {
-              ...project,
+              ...toProject(project),
               primaryRepo: repos.find((repo) => repo.isPrimary) ?? null,
               repoCount: repos.length,
             };
@@ -146,10 +254,10 @@ export function createProjectStore(db: Db, options?: { logger?: Logger }): Proje
         const repos = db
           .select()
           .from(projectRepos)
-          .where(eq(projectRepos.projectId, id))
+          .where(and(eq(projectRepos.projectId, id), isNull(projectRepos.detachedAt)))
           .orderBy(sql`${projectRepos.addedAt} asc`)
           .all();
-        return ok({ project: found[0], repos, primaryRepo: repos.find((repo) => repo.isPrimary) ?? null });
+        return ok({ project: toProject(found[0]), repos, primaryRepo: repos.find((repo) => repo.isPrimary) ?? null });
       } catch (cause) {
         const error: DbError = { cause, code: "DB_READ_FAILED", message: "查询项目失败" };
         logFailure("getProject", error);
@@ -161,14 +269,28 @@ export function createProjectStore(db: Db, options?: { logger?: Logger }): Proje
       try {
         const now = new Date();
         const project: Project = {
+          archivedAt: null,
+          completedAt: null,
+          completedBy: null,
+          completionCriteriaResults: [],
+          completionSummary: null,
           createdAt: now,
           createdBy: input.createdBy,
           description: input.description ?? null,
+          desiredOutcome: input.desiredOutcome ?? null,
           id: randomUUID(),
+          lifecycleStatus: "planned",
           name: input.name,
+          nonGoals: input.nonGoals ?? null,
+          problemStatement: input.problemStatement ?? null,
+          successCriteria: input.successCriteria ?? [],
+          targetDate: input.targetDate ?? null,
           updatedAt: now,
+          version: 1,
         };
-        db.insert(projects).values(project).run();
+        db.insert(projects)
+          .values({ ...project, completionCriteriaResults: JSON.stringify(project.completionCriteriaResults), successCriteria: JSON.stringify(project.successCriteria) })
+          .run();
         return ok(project);
       } catch (cause) {
         const error: DbError = { cause, code: "DB_WRITE_FAILED", message: "创建项目失败" };
@@ -181,14 +303,52 @@ export function createProjectStore(db: Db, options?: { logger?: Logger }): Proje
       try {
         const rows = db
           .update(projects)
-          .set({ description: input.description ?? null, name: input.name, updatedAt: new Date() })
-          .where(eq(projects.id, id))
+          .set({
+            description: input.description ?? null,
+            completedAt: input.completedAt,
+            completedBy: input.completedBy,
+            completionCriteriaResults: input.completionCriteriaResults ? JSON.stringify(input.completionCriteriaResults) : undefined,
+            completionSummary: input.completionSummary,
+            desiredOutcome: input.desiredOutcome,
+            lifecycleStatus: input.lifecycleStatus,
+            name: input.name,
+            nonGoals: input.nonGoals,
+            problemStatement: input.problemStatement,
+            successCriteria: input.successCriteria ? JSON.stringify(input.successCriteria) : undefined,
+            targetDate: input.targetDate,
+            updatedAt: new Date(),
+            version: sql`${projects.version} + 1`,
+          })
+          .where(and(eq(projects.id, id), eq(projects.version, input.expectedVersion), isNull(projects.archivedAt)))
           .returning()
           .all();
-        return ok(rows[0] ?? null);
+        if (rows[0]) return ok(toProject(rows[0]));
+        const exists = db.select({ id: projects.id }).from(projects).where(eq(projects.id, id)).limit(1).all();
+        if (exists.length === 0) return ok(null);
+        return err({ code: "CONCURRENCY_CONFLICT", message: "项目已被其他操作更新，请刷新后重试" });
       } catch (cause) {
         const error: DbError = { cause, code: "DB_WRITE_FAILED", message: "更新项目失败" };
         logFailure("updateProject", error);
+        return err(error);
+      }
+    },
+
+    async archiveProject(id, expectedVersion) {
+      try {
+        const now = new Date();
+        const rows = db
+          .update(projects)
+          .set({ archivedAt: now, lifecycleStatus: "archived", updatedAt: now, version: sql`${projects.version} + 1` })
+          .where(and(eq(projects.id, id), eq(projects.version, expectedVersion), isNull(projects.archivedAt)))
+          .returning()
+          .all();
+        if (rows[0]) return ok(toProject(rows[0]));
+        const exists = db.select({ id: projects.id }).from(projects).where(eq(projects.id, id)).limit(1).all();
+        if (exists.length === 0) return ok(null);
+        return err({ code: "CONCURRENCY_CONFLICT", message: "项目已被归档或更新，请刷新后重试" });
+      } catch (cause) {
+        const error: DbError = { cause, code: "DB_WRITE_FAILED", message: "归档项目失败" };
+        logFailure("archiveProject", error);
         return err(error);
       }
     },
@@ -211,18 +371,24 @@ export function createProjectStore(db: Db, options?: { logger?: Logger }): Proje
           const isPrimary =
             tx.select({ id: projectRepos.id })
               .from(projectRepos)
-              .where(eq(projectRepos.projectId, input.projectId))
+              .where(and(eq(projectRepos.projectId, input.projectId), isNull(projectRepos.detachedAt)))
               .limit(1)
               .all().length === 0;
           const next: ProjectRepo = {
             accessStatus: input.accessStatus,
             addedAt: now,
+            canCreatePr: input.canCreatePr ?? null,
+            canPush: input.canPush ?? null,
             defaultBranch: input.defaultBranch,
+            detachedAt: null,
             id: randomUUID(),
             isPrimary,
+            lastExecutionValidatedAt: input.lastExecutionValidatedAt ?? null,
             lastValidatedAt: now,
             projectId: input.projectId,
+            providerRepoId: input.providerRepoId ?? null,
             repo: input.repo,
+            version: 1,
           };
           tx.insert(projectRepos).values(next).run();
           return next;
@@ -238,39 +404,48 @@ export function createProjectStore(db: Db, options?: { logger?: Logger }): Proje
       }
     },
 
-    async setPrimaryRepo(projectId, repoId) {
+    async setPrimaryRepo(projectId, repoId, expectedVersion) {
       try {
         db.transaction((tx) => {
+          const target = tx
+            .select()
+            .from(projectRepos)
+            .where(and(eq(projectRepos.projectId, projectId), eq(projectRepos.id, repoId), isNull(projectRepos.detachedAt)))
+            .limit(1)
+            .all()[0];
+          if (!target) {
+            throw { code: "PROJECT_REPO_NOT_FOUND", message: "目标仓库不存在" } satisfies ProjectRepoNotFoundError;
+          }
+          if (target.version !== expectedVersion) {
+            throw { code: "CONCURRENCY_CONFLICT", message: "仓库已被其他操作更新，请刷新后重试" } satisfies ConcurrencyConflictError;
+          }
+          if (target.accessStatus !== "available") {
+            throw { code: "PROJECT_REPO_UNAVAILABLE", message: "仅可访问的仓库可以设为主仓库" } satisfies ProjectRepoUnavailableError;
+          }
+          if (target.isPrimary) return;
           tx.update(projectRepos)
-            .set({ isPrimary: false })
-            .where(eq(projectRepos.projectId, projectId))
+            .set({ isPrimary: false, version: sql`${projectRepos.version} + 1` })
+            .where(and(eq(projectRepos.projectId, projectId), eq(projectRepos.isPrimary, true), isNull(projectRepos.detachedAt)))
             .run();
-          tx.update(projectRepos)
-            .set({ isPrimary: true })
+          const selected = tx.update(projectRepos)
+            .set({ isPrimary: true, version: sql`${projectRepos.version} + 1` })
             .where(
               and(
                 eq(projectRepos.projectId, projectId),
                 eq(projectRepos.id, repoId),
                 eq(projectRepos.accessStatus, "available"),
+                eq(projectRepos.version, expectedVersion),
+                isNull(projectRepos.detachedAt),
               ),
             )
             .run();
-          const selected = tx
-            .select({ id: projectRepos.id })
-            .from(projectRepos)
-            .where(
-              and(
-                eq(projectRepos.projectId, projectId),
-                eq(projectRepos.id, repoId),
-                eq(projectRepos.isPrimary, true),
-              ),
-            )
-            .limit(1)
-            .all();
-          if (selected.length === 0) throw new Error("目标主仓库不存在或不可用");
+          if (selected.changes === 0) {
+            throw { code: "CONCURRENCY_CONFLICT", message: "仓库已被其他操作更新，请刷新后重试" } satisfies ConcurrencyConflictError;
+          }
         });
         return ok(undefined);
       } catch (cause) {
+        if (isProjectStoreBusinessError(cause)) return err(cause);
         const error: DbError = { cause, code: "DB_WRITE_FAILED", message: "设置主仓库失败" };
         logFailure("setPrimaryRepo", error);
         return err(error);
@@ -281,11 +456,29 @@ export function createProjectStore(db: Db, options?: { logger?: Logger }): Proje
       try {
         const rows = db
           .update(projectRepos)
-          .set(input)
-          .where(eq(projectRepos.id, repoId))
+          .set({
+            accessStatus: input.accessStatus,
+            canCreatePr: input.canCreatePr,
+            canPush: input.canPush,
+            defaultBranch: input.defaultBranch,
+            lastExecutionValidatedAt: input.lastExecutionValidatedAt,
+            lastValidatedAt: input.lastValidatedAt,
+            providerRepoId: input.providerRepoId,
+            repo: input.repo,
+            version: sql`${projectRepos.version} + 1`,
+          })
+          .where(and(eq(projectRepos.id, repoId), eq(projectRepos.version, input.expectedVersion), isNull(projectRepos.detachedAt)))
           .returning()
           .all();
-        return ok(rows[0] ?? null);
+        if (rows[0]) return ok(rows[0]);
+        const exists = db
+          .select({ id: projectRepos.id })
+          .from(projectRepos)
+          .where(and(eq(projectRepos.id, repoId), isNull(projectRepos.detachedAt)))
+          .limit(1)
+          .all();
+        if (exists.length === 0) return ok(null);
+        return err({ code: "CONCURRENCY_CONFLICT", message: "仓库已被其他操作更新，请刷新后重试" });
       } catch (cause) {
         if (isUniqueViolation(cause)) {
           return err({ cause, code: "PROJECT_REPO_EXISTS", message: `仓库 ${input.repo} 已在项目中` });
@@ -298,62 +491,72 @@ export function createProjectStore(db: Db, options?: { logger?: Logger }): Proje
 
     async removeRepo(input) {
       try {
+        const now = new Date();
         db.transaction((tx) => {
+          let targetDetached = false;
           const target = tx
-            .select({ isPrimary: projectRepos.isPrimary })
+            .select()
             .from(projectRepos)
-            .where(and(eq(projectRepos.projectId, input.projectId), eq(projectRepos.id, input.repoId)))
+            .where(and(eq(projectRepos.projectId, input.projectId), eq(projectRepos.id, input.repoId), isNull(projectRepos.detachedAt)))
             .limit(1)
             .all()[0];
-          const hasOtherRepo =
-            tx.select({ id: projectRepos.id })
-              .from(projectRepos)
-              .where(and(eq(projectRepos.projectId, input.projectId), sql`${projectRepos.id} <> ${input.repoId}`))
-              .limit(1)
-              .all().length > 0;
-          if (!target) throw new Error("待移除仓库不存在");
-          if (target.isPrimary && hasOtherRepo && !input.replacementPrimaryRepoId) {
-            throw new Error("移除主仓库时缺少替代主仓库");
+          if (!target) {
+            throw { code: "PROJECT_REPO_NOT_FOUND", message: "待移除仓库不存在" } satisfies ProjectRepoNotFoundError;
           }
-          if (target.isPrimary && hasOtherRepo && input.replacementPrimaryRepoId === input.repoId) {
-            throw new Error("替代主仓库不能是待移除仓库");
+          if (target.version !== input.expectedVersion) {
+            throw { code: "CONCURRENCY_CONFLICT", message: "仓库已被其他操作更新，请刷新后重试" } satisfies ConcurrencyConflictError;
           }
-          if (input.replacementPrimaryRepoId) {
-            tx.update(projectRepos)
-              .set({ isPrimary: false })
-              .where(eq(projectRepos.projectId, input.projectId))
+          const otherRepos = tx
+            .select()
+            .from(projectRepos)
+            .where(and(eq(projectRepos.projectId, input.projectId), sql`${projectRepos.id} <> ${input.repoId}`, isNull(projectRepos.detachedAt)))
+            .all();
+          if (target.isPrimary && otherRepos.length > 0) {
+            if (!input.replacementPrimaryRepoId || input.replacementPrimaryRepoId === input.repoId) {
+              throw {
+                code: "PRIMARY_REPO_REPLACEMENT_REQUIRED",
+                message: "移除主仓库前，请选择一个可访问的替代主仓库",
+              } satisfies PrimaryRepoReplacementRequiredError;
+            }
+            const replacement = otherRepos.find((repo) => repo.id === input.replacementPrimaryRepoId);
+            if (!replacement) {
+              throw { code: "PROJECT_REPO_NOT_FOUND", message: "替代主仓库不存在" } satisfies ProjectRepoNotFoundError;
+            }
+            if (replacement.accessStatus !== "available") {
+              throw { code: "PROJECT_REPO_UNAVAILABLE", message: "替代主仓库当前不可访问" } satisfies ProjectRepoUnavailableError;
+            }
+            if (input.replacementExpectedVersion === undefined || replacement.version !== input.replacementExpectedVersion) {
+              throw { code: "CONCURRENCY_CONFLICT", message: "替代仓库已被其他操作更新，请刷新后重试" } satisfies ConcurrencyConflictError;
+            }
+            const detachedPrimary = tx.update(projectRepos)
+              .set({ detachedAt: now, isPrimary: false, version: sql`${projectRepos.version} + 1` })
+              .where(and(eq(projectRepos.id, target.id), eq(projectRepos.version, input.expectedVersion), isNull(projectRepos.detachedAt)))
               .run();
-            tx.update(projectRepos)
-              .set({ isPrimary: true })
-              .where(
-                and(
-                  eq(projectRepos.projectId, input.projectId),
-                  eq(projectRepos.id, input.replacementPrimaryRepoId),
-                  eq(projectRepos.accessStatus, "available"),
-                ),
-              )
+            if (detachedPrimary.changes === 0) {
+              throw { code: "CONCURRENCY_CONFLICT", message: "仓库已被其他操作更新，请刷新后重试" } satisfies ConcurrencyConflictError;
+            }
+            targetDetached = true;
+            const promoted = tx.update(projectRepos)
+              .set({ isPrimary: true, version: sql`${projectRepos.version} + 1` })
+              .where(and(eq(projectRepos.id, replacement.id), eq(projectRepos.version, replacement.version), isNull(projectRepos.detachedAt)))
               .run();
-            const selected = tx
-              .select({ id: projectRepos.id })
-              .from(projectRepos)
-              .where(
-                and(
-                  eq(projectRepos.projectId, input.projectId),
-                  eq(projectRepos.id, input.replacementPrimaryRepoId),
-                  eq(projectRepos.isPrimary, true),
-                ),
-              )
-              .limit(1)
-              .all();
-            if (selected.length === 0) throw new Error("替代主仓库不存在或不可用");
+            if (promoted.changes === 0) {
+              throw { code: "CONCURRENCY_CONFLICT", message: "替代仓库已被其他操作更新，请刷新后重试" } satisfies ConcurrencyConflictError;
+            }
           }
-          const deleted = tx.delete(projectRepos)
-            .where(and(eq(projectRepos.projectId, input.projectId), eq(projectRepos.id, input.repoId)))
-            .run();
-          if (deleted.changes === 0) throw new Error("待移除仓库不存在");
+          if (!targetDetached) {
+            const detached = tx.update(projectRepos)
+              .set({ detachedAt: now, isPrimary: false, version: sql`${projectRepos.version} + 1` })
+              .where(and(eq(projectRepos.projectId, input.projectId), eq(projectRepos.id, input.repoId), eq(projectRepos.version, input.expectedVersion), isNull(projectRepos.detachedAt)))
+              .run();
+            if (detached.changes === 0) {
+              throw { code: "CONCURRENCY_CONFLICT", message: "仓库已被其他操作更新，请刷新后重试" } satisfies ConcurrencyConflictError;
+            }
+          }
         });
         return ok(undefined);
       } catch (cause) {
+        if (isProjectStoreBusinessError(cause)) return err(cause);
         const error: DbError = { cause, code: "DB_WRITE_FAILED", message: "移除仓库失败" };
         logFailure("removeRepo", error);
         return err(error);

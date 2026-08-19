@@ -42,6 +42,7 @@ interface ProjectSummaryDto {
   repoCount: number;
   readiness: "setup_required" | "ready" | "needs_attention";
   primaryRepo: { repo: string } | null;
+  lifecycleStatus: "planned" | "active" | "blocked" | "completed" | "archived";
   createdAt: string;
 }
 
@@ -253,7 +254,7 @@ function ProjectRow({ project, reduceMotion }: { project: ProjectSummaryDto; red
             <p className="text-muted-foreground mt-0.5 truncate text-xs">{project.description || "暂无描述"}</p>
           </div>
         </div>
-        <ReadinessBadge readiness={project.readiness} />
+        <div><ReadinessBadge readiness={project.readiness} /><span className="text-muted-foreground mt-1 block text-[10px]">{lifecycleCopy[project.lifecycleStatus]}</span></div>
         <span className="inline-flex items-center gap-1.5 text-xs tabular-nums">
           <GitFork className="text-muted-foreground size-3.5" />
           {project.repoCount}
@@ -264,6 +265,10 @@ function ProjectRow({ project, reduceMotion }: { project: ProjectSummaryDto; red
     </motion.div>
   );
 }
+
+const lifecycleCopy: Record<ProjectSummaryDto["lifecycleStatus"], string> = {
+  active: "进行中", archived: "已归档", blocked: "受阻", completed: "已完成", planned: "计划中",
+};
 
 function ReadinessBadge({ readiness }: { readiness: ProjectSummaryDto["readiness"] }) {
   const content = {

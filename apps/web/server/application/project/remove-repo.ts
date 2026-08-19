@@ -18,6 +18,7 @@ export function createRemoveRepo(deps: { projectStore: ProjectStore; logger: Log
     const existing = await deps.projectStore.getProject(input.projectId);
     if (!existing.ok) return err(projectErrorFromStore(existing.error));
     if (!existing.value) return err({ code: "PROJECT_NOT_FOUND", kind: "business", message: "项目不存在" });
+    if (existing.value.project.archivedAt) return err({ code: "PROJECT_ARCHIVED", kind: "business", message: "项目已归档，只能查看历史配置" });
     const repo = existing.value.repos.find((r) => r.id === input.repoId);
     if (!repo) return err({ code: "PROJECT_REPO_NOT_FOUND", kind: "business", message: "仓库不在该项目中" });
 
@@ -45,7 +46,9 @@ export function createRemoveRepo(deps: { projectStore: ProjectStore; logger: Log
     const removed = await deps.projectStore.removeRepo({
       projectId: input.projectId,
       repoId: input.repoId,
+      expectedVersion: repo.version,
       replacementPrimaryRepoId: replacement?.id,
+      replacementExpectedVersion: replacement?.version,
     });
     if (!removed.ok) return err(projectErrorFromStore(removed.error));
     if (replacement) {

@@ -9,7 +9,7 @@ import type { ProjectStore } from "@/server/domains/project/ports";
 
 /**
  * 用例：项目列表（含各项目仓库数）。
- * 非 admin 只返回「我创建的 ∪ 我是成员的」，过滤在应用层做（docs/architecture-rbac-menu.md §1.3）。
+ * 非 admin 只返回当前项目授权快照中明确拥有 project:read 的项目。
  */
 export function createListProjects(deps: { projectStore: ProjectStore }) {
   return async (actor: ActorContext): Promise<Result<ProjectSummary[], ProjectError>> => {
@@ -20,7 +20,9 @@ export function createListProjects(deps: { projectStore: ProjectStore }) {
       readiness: deriveReadiness(project),
     }));
     if (isSiteAdmin(actor.permissions)) return ok(summaries);
-    const memberProjectIds = new Set(actor.permissions.projects.map((p) => p.projectId));
-    return ok(summaries.filter((p) => p.createdBy === actor.userId || memberProjectIds.has(p.id)));
+    const readableProjectIds = new Set(
+      actor.permissions.projects.filter((p) => p.permissions.includes("project:read")).map((p) => p.projectId),
+    );
+    return ok(summaries.filter((p) => readableProjectIds.has(p.id)));
   };
 }

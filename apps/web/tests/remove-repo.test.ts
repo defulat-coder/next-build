@@ -7,22 +7,40 @@ import type { ActorContext } from "@/server/domains/iam/model";
 import type { ProjectStore } from "@/server/domains/project/ports";
 
 const project = {
+  archivedAt: null,
+  completedAt: null,
+  completedBy: null,
+  completionCriteriaResults: [],
+  completionSummary: null,
   createdAt: new Date("2026-01-01"),
   createdBy: "u-1",
   description: null,
+  desiredOutcome: null,
   id: "p-1",
   name: "demo",
+  nonGoals: null,
+  problemStatement: null,
+  successCriteria: [],
+  targetDate: null,
+  lifecycleStatus: "planned" as const,
   updatedAt: new Date("2026-01-01"),
+  version: 1,
 };
 const primary = {
   accessStatus: "available" as const,
   addedAt: new Date("2026-01-01"),
   defaultBranch: "main",
+  canCreatePr: true,
+  canPush: true,
+  detachedAt: null,
   id: "r-1",
   isPrimary: true,
+  lastExecutionValidatedAt: new Date("2026-01-01"),
   lastValidatedAt: new Date("2026-01-01"),
   projectId: "p-1",
+  providerRepoId: "1",
   repo: "octo/one",
+  version: 1,
 };
 const replacement = { ...primary, id: "r-2", isPrimary: false, repo: "octo/two" };
 const unavailable = {
@@ -45,6 +63,7 @@ function makeDeps(repos = [primary, replacement, unavailable]) {
   const projectStore: ProjectStore = {
     addRepo: vi.fn(),
     createProject: vi.fn(),
+    archiveProject: vi.fn(),
     deleteProject: vi.fn(),
     getProject: vi.fn(async () => ok({ primaryRepo: repos.find((repo) => repo.isPrimary) ?? null, project, repos })),
     listProjects: vi.fn(),
@@ -68,8 +87,10 @@ describe("removeRepo", () => {
 
     expect(result.ok).toBe(true);
     expect(deps.projectStore.removeRepo).toHaveBeenCalledWith({
+      expectedVersion: 1,
       projectId: "p-1",
       repoId: "r-1",
+      replacementExpectedVersion: 1,
       replacementPrimaryRepoId: "r-2",
     });
     expect(deps.logger.info).toHaveBeenCalledWith(
@@ -107,8 +128,10 @@ describe("removeRepo", () => {
 
     expect(result.ok).toBe(true);
     expect(deps.projectStore.removeRepo).toHaveBeenCalledWith({
+      expectedVersion: 1,
       projectId: "p-1",
       repoId: "r-1",
+      replacementExpectedVersion: undefined,
       replacementPrimaryRepoId: undefined,
     });
   });

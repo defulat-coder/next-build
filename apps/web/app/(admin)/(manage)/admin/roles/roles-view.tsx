@@ -87,6 +87,7 @@ const PERMISSION_TREE: readonly PermissionNode[] = [
     children: [
       { code: "task:read", type: "permission" },
       { code: "task:create", type: "permission" },
+      { code: "task:accept", type: "permission" },
     ],
   },
   {

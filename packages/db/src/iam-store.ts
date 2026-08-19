@@ -21,6 +21,8 @@ export interface ProjectMember {
   userId: string;
   role: ProjectRoleCode;
   addedAt: Date;
+  name: string;
+  avatarUrl: string | null;
 }
 
 /** 用户及其整站角色（管理后台用户列表用）。 */
@@ -264,12 +266,15 @@ export function createIamStore(db: Db, options?: { logger?: Logger }): IamStore 
         const rows = db
           .select({
             addedAt: projectMembers.addedAt,
+            avatarUrl: users.avatarUrl,
+            name: users.name,
             projectId: projectMembers.projectId,
             role: roles.code,
             userId: projectMembers.userId,
           })
           .from(projectMembers)
           .innerJoin(roles, eq(projectMembers.roleId, roles.id))
+          .innerJoin(users, eq(projectMembers.userId, users.id))
           .where(eq(projectMembers.projectId, projectId))
           .all();
         return ok(

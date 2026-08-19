@@ -16,12 +16,22 @@ export function createCreateProject(deps: { projectStore: ProjectStore; iamStore
   return async (input: {
     name: string;
     description?: string;
+    problemStatement?: string;
+    desiredOutcome?: string;
+    successCriteria?: string[];
+    nonGoals?: string;
+    targetDate?: Date;
     userId: string;
   }): Promise<Result<Project, ProjectError>> => {
     const project = await deps.projectStore.createProject({
       createdBy: input.userId,
       description: input.description,
+      desiredOutcome: input.desiredOutcome,
       name: input.name,
+      nonGoals: input.nonGoals,
+      problemStatement: input.problemStatement,
+      successCriteria: input.successCriteria,
+      targetDate: input.targetDate,
     });
     if (!project.ok) return err(projectErrorFromStore(project.error));
 
@@ -30,7 +40,22 @@ export function createCreateProject(deps: { projectStore: ProjectStore; iamStore
       role: "project:owner",
       userId: input.userId,
     });
-    if (!member.ok) return err(projectErrorFromStore(member.error));
+    if (!member.ok) {
+      const rollback = await deps.projectStore.deleteProject(project.value.id);
+      if (!rollback.ok) {
+        deps.logger.error(
+          {
+            err: rollback.error.cause instanceof Error ? rollback.error.cause : undefined,
+            "error.code": rollback.error.code,
+            event: "project.create_compensation_failed",
+            project_id: project.value.id,
+            user_id: input.userId,
+          },
+          "项目 owner 写入失败且补偿删除失败",
+        );
+      }
+      return err(projectErrorFromStore(member.error));
+    }
 
     deps.logger.info(
       { event: "project.created", project_id: project.value.id, user_id: input.userId },

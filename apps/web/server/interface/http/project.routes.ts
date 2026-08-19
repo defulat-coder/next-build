@@ -6,12 +6,13 @@ import { createAddRepo } from "@/server/application/project/add-repo";
 import { createCreateProject } from "@/server/application/project/create-project";
 import { createDeleteProject } from "@/server/application/project/delete-project";
 import { createGetProject } from "@/server/application/project/get-project";
+import { createGetProjectDeliveryOverview } from "@/server/application/project/get-project-delivery-overview";
 import { createListProjects } from "@/server/application/project/list-projects";
 import { createRevalidateRepo } from "@/server/application/project/revalidate-repo";
 import { createRemoveRepo } from "@/server/application/project/remove-repo";
 import { createSetPrimaryRepo } from "@/server/application/project/set-primary-repo";
 import { createUpdateProject } from "@/server/application/project/update-project";
-import { getGitHubGateway, iamStore, projectStore } from "@/server/composition-root";
+import { getGitHubGateway, iamStore, knowledgeStore, projectStore, taskStore } from "@/server/composition-root";
 import type { ProjectError } from "@/server/domains/project/errors";
 import type { ActorContext } from "@/server/domains/iam/model";
 import { parseRepoInput } from "@/server/infrastructure/gateways/github-client";
@@ -21,7 +22,19 @@ import { requirePermission } from "./permission-guard";
 
 const createProjectSchema = z.object({
   description: z.string().trim().max(200, "描述最长 200 字").optional(),
+  desiredOutcome: z.string().trim().max(1000, "期望结果最长 1000 字").optional(),
   name: z.string().trim().min(1, "项目名称必填").max(50, "项目名称最长 50 字"),
+  nonGoals: z.string().trim().max(1000, "非目标最长 1000 字").optional(),
+  problemStatement: z.string().trim().max(1000, "问题陈述最长 1000 字").optional(),
+  successCriteria: z.array(z.string().trim().min(1).max(200)).max(10).optional(),
+  targetDate: z.coerce.date().optional(),
+});
+
+const updateProjectSchema = createProjectSchema.extend({
+  completionCriteriaResults: z.array(z.object({ criterion: z.string().trim().min(1).max(200), evidence: z.string().trim().max(1000).optional(), passed: z.boolean() })).max(10).optional(),
+  completionSummary: z.string().trim().max(3000).optional(),
+  lifecycleStatus: z.enum(["planned", "active", "blocked", "completed"]).optional(),
+  targetDate: z.coerce.date().nullable().optional(),
 });
 
 const addRepoSchema = z.object({
@@ -47,7 +60,9 @@ function errorResponse(c: Context, error: ProjectError) {
       ? 404
       : error.code === "PROJECT_REPO_NOT_FOUND"
         ? 404
-        : error.code === "PROJECT_REPO_EXISTS" || error.code === "PRIMARY_REPO_REPLACEMENT_REQUIRED"
+        : error.code === "PROJECT_REPO_EXISTS" ||
+            error.code === "PRIMARY_REPO_REPLACEMENT_REQUIRED" ||
+            error.code === "CONCURRENCY_CONFLICT"
         ? 409
         : error.code === "FORBIDDEN"
           ? 403
@@ -87,6 +102,13 @@ export const projectRoutes = new Hono<{ Variables: AuthVariables }>()
   })
 
   // 项目详情（含仓库列表）。
+  .get("/:id/overview", async (c) => {
+    const result = await createGetProjectDeliveryOverview({ iamStore, knowledgeStore, logger, projectStore, taskStore })({ actor: actorOf(c), projectId: c.req.param("id") });
+    if (!result.ok) return errorResponse(c, result.error);
+    return c.json(result.value);
+  })
+
+  // 项目详情（含仓库列表）。
   .get("/:id", async (c) => {
     const result = await createGetProject({ logger, projectStore })({ actor: actorOf(c), id: c.req.param("id") });
     if (!result.ok) return errorResponse(c, result.error);
@@ -95,14 +117,14 @@ export const projectRoutes = new Hono<{ Variables: AuthVariables }>()
 
   // 更新项目（名称/描述；项目级 owner 判定在用例内做）。
   .patch("/:id", async (c) => {
-    const parsed = createProjectSchema.safeParse(await c.req.json().catch(() => null));
+    const parsed = updateProjectSchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) {
       return c.json(
         { error: { code: "VALIDATION_FAILED", message: parsed.error.issues[0]?.message ?? "入参校验失败" } },
         400,
       );
     }
-    const result = await createUpdateProject({ logger, projectStore })({
+    const result = await createUpdateProject({ logger, projectStore, taskStore })({
       ...parsed.data,
       actor: actorOf(c),
       id: c.req.param("id"),
@@ -111,7 +133,7 @@ export const projectRoutes = new Hono<{ Variables: AuthVariables }>()
     return c.json(result.value);
   })
 
-  // 删除项目（仓库/成员级联删除；项目级 owner 判定在用例内做）。
+  // 归档项目：保留任务、交付、知识与成员审计链。
   .delete("/:id", async (c) => {
     const result = await createDeleteProject({ logger, projectStore })({
       actor: actorOf(c),

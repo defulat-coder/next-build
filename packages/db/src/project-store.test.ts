@@ -43,13 +43,13 @@ describe("ProjectStore", () => {
     const created = await store.createProject({ createdBy: userId, name: "p" });
     if (!created.ok) throw new Error("createProject failed");
 
-    const updated = await store.updateProject(created.value.id, { description: "新描述", name: "p2" });
+    const updated = await store.updateProject(created.value.id, { description: "新描述", expectedVersion: 1, name: "p2" });
     expect(updated.ok).toBe(true);
     if (!updated.ok) return;
     expect(updated.value?.name).toBe("p2");
     expect(updated.value?.description).toBe("新描述");
     expect(updated.value?.updatedAt.getTime()).toBeGreaterThanOrEqual(created.value.updatedAt.getTime());
-    expect(await store.updateProject("no-such-id", { name: "x" })).toEqual({ ok: true, value: null });
+    expect(await store.updateProject("no-such-id", { expectedVersion: 1, name: "x" })).toEqual({ ok: true, value: null });
   });
 
   it("首仓自动成为主仓，后续仓库保持非主", async () => {
@@ -113,11 +113,11 @@ describe("ProjectStore", () => {
     });
     if (!first.ok || !second.ok || !unavailable.ok) throw new Error("addRepo failed");
 
-    expect((await store.setPrimaryRepo(project.value.id, second.value.id)).ok).toBe(true);
+    expect((await store.setPrimaryRepo(project.value.id, second.value.id, second.value.version)).ok).toBe(true);
     let got = await store.getProject(project.value.id);
     expect(got.ok && got.value?.primaryRepo?.id).toBe(second.value.id);
 
-    const rejected = await store.setPrimaryRepo(project.value.id, unavailable.value.id);
+    const rejected = await store.setPrimaryRepo(project.value.id, unavailable.value.id, unavailable.value.version);
     expect(rejected.ok).toBe(false);
     got = await store.getProject(project.value.id);
     expect(got.ok && got.value?.primaryRepo?.id).toBe(second.value.id);
@@ -136,6 +136,7 @@ describe("ProjectStore", () => {
       defaultBranch: "trunk",
       lastValidatedAt: validatedAt,
       repo: "Octo/New",
+      expectedVersion: added.value.version,
     });
     expect(updated.ok && updated.value).toMatchObject({
       accessStatus: "available",
@@ -154,22 +155,24 @@ describe("ProjectStore", () => {
     const third = await store.addRepo(availableRepo(project.value.id, "octo/three"));
     if (!first.ok || !second.ok || !third.ok) throw new Error("addRepo failed");
 
-    expect((await store.removeRepo({ projectId: project.value.id, repoId: third.value.id })).ok).toBe(true);
-    const missingReplacement = await store.removeRepo({ projectId: project.value.id, repoId: first.value.id });
+    expect((await store.removeRepo({ expectedVersion: third.value.version, projectId: project.value.id, repoId: third.value.id })).ok).toBe(true);
+    const missingReplacement = await store.removeRepo({ expectedVersion: first.value.version, projectId: project.value.id, repoId: first.value.id });
     expect(missingReplacement.ok).toBe(false);
     expect(
       (
         await store.removeRepo({
           projectId: project.value.id,
           repoId: first.value.id,
+          expectedVersion: first.value.version,
           replacementPrimaryRepoId: second.value.id,
+          replacementExpectedVersion: second.value.version,
         })
       ).ok,
     ).toBe(true);
     const after = await store.getProject(project.value.id);
     expect(after.ok && after.value?.primaryRepo?.id).toBe(second.value.id);
 
-    expect((await store.removeRepo({ projectId: project.value.id, repoId: second.value.id })).ok).toBe(true);
+    expect((await store.removeRepo({ expectedVersion: second.value.version + 1, projectId: project.value.id, repoId: second.value.id })).ok).toBe(true);
     const empty = await store.getProject(project.value.id);
     expect(empty.ok && empty.value?.repos).toEqual([]);
   });
@@ -184,9 +187,9 @@ describe("ProjectStore", () => {
 
     const sqlite = (db as unknown as { $client: { exec: (sql: string) => void } }).$client;
     sqlite.exec(`
-      CREATE TRIGGER abort_primary_delete
-      BEFORE DELETE ON project_repos
-      WHEN OLD.id = '${first.value.id}'
+      CREATE TRIGGER abort_primary_detach
+      BEFORE UPDATE ON project_repos
+      WHEN OLD.id = '${first.value.id}' AND NEW.detached_at IS NOT NULL
       BEGIN
         SELECT RAISE(ABORT, 'blocked');
       END;
@@ -194,7 +197,9 @@ describe("ProjectStore", () => {
     const result = await store.removeRepo({
       projectId: project.value.id,
       repoId: first.value.id,
+      expectedVersion: first.value.version,
       replacementPrimaryRepoId: second.value.id,
+      replacementExpectedVersion: second.value.version,
     });
     expect(result.ok).toBe(false);
     const got = await store.getProject(project.value.id);
@@ -212,7 +217,7 @@ describe("ProjectStore", () => {
 
     let list = await store.listProjects();
     expect(list.ok && list.value.find((project) => project.id === a.value.id)?.repoCount).toBe(1);
-    await store.removeRepo({ projectId: a.value.id, repoId: repo.value.id });
+    await store.removeRepo({ expectedVersion: repo.value.version, projectId: a.value.id, repoId: repo.value.id });
     list = await store.listProjects();
     expect(list.ok && list.value.find((project) => project.id === a.value.id)?.repoCount).toBe(0);
 

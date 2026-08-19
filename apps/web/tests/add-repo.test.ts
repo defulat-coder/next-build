@@ -8,12 +8,24 @@ import type { ProjectError } from "@/server/domains/project/errors";
 import type { GitHubGateway, ProjectStore } from "@/server/domains/project/ports";
 
 const project = {
+  archivedAt: null,
+  completedAt: null,
+  completedBy: null,
+  completionCriteriaResults: [],
+  completionSummary: null,
   createdAt: new Date("2026-01-01"),
   createdBy: "u-1",
   description: null,
+  desiredOutcome: null,
   id: "p-1",
   name: "demo",
+  nonGoals: null,
+  problemStatement: null,
+  successCriteria: [],
+  targetDate: null,
+  lifecycleStatus: "planned" as const,
   updatedAt: new Date("2026-01-01"),
+  version: 1,
 };
 
 /** 项目 owner 操作者（repo:manage 判定放行）。 */
@@ -40,14 +52,21 @@ function makeDeps() {
         accessStatus: repoInput.accessStatus,
         addedAt: new Date(),
         defaultBranch: repoInput.defaultBranch,
+        canCreatePr: repoInput.accessStatus === "available",
+        canPush: repoInput.accessStatus === "available",
+        detachedAt: null,
         id: "r-1",
         isPrimary: true,
+        lastExecutionValidatedAt: null,
         lastValidatedAt: new Date(),
         projectId: repoInput.projectId,
+        providerRepoId: null,
         repo: repoInput.repo,
+        version: 1,
       }),
     ),
     createProject: vi.fn(),
+    archiveProject: vi.fn(),
     deleteProject: vi.fn(async () => ok(undefined)),
     getProject: vi.fn(async () => ok({ primaryRepo: null, project, repos: [] })),
     listProjects: vi.fn(async () => ok([])),
@@ -57,7 +76,12 @@ function makeDeps() {
     updateProject: vi.fn(),
   };
   const gateway: GitHubGateway = {
-    checkRepo: vi.fn(async (repo: string) => ok({ defaultBranch: "main", repo })),
+    checkRepo: vi.fn(async (repo: string) => ok({ canCreatePr: true, canPush: true, defaultBranch: "main", providerRepoId: "1", repo })),
+    createDraftPullRequest: vi.fn(),
+    getPullRequest: vi.fn(),
+    findPullRequestByHead: vi.fn(),
+    resolveRepoHead: vi.fn(),
+    resolveExecutionTarget: vi.fn(),
   };
   const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn() };
   return { gateway, logger, projectStore };
@@ -76,8 +100,12 @@ describe("addRepo", () => {
     expect(deps.gateway.checkRepo).toHaveBeenCalledWith("octocat/hello-world");
     expect(deps.projectStore.addRepo).toHaveBeenCalledWith({
       accessStatus: "available",
+      canCreatePr: true,
+      canPush: true,
       defaultBranch: "main",
+      lastExecutionValidatedAt: expect.any(Date),
       projectId: "p-1",
+      providerRepoId: "1",
       repo: "octocat/hello-world",
     });
     expect(deps.logger.info).toHaveBeenCalledWith(
@@ -101,8 +129,12 @@ describe("addRepo", () => {
     expect(result.ok).toBe(true);
     expect(deps.projectStore.addRepo).toHaveBeenCalledWith({
       accessStatus: "unavailable",
+      canCreatePr: null,
+      canPush: null,
       defaultBranch: null,
+      lastExecutionValidatedAt: null,
       projectId: "p-1",
+      providerRepoId: null,
       repo: "octocat/no-such",
     });
     expect(deps.logger.warn).toHaveBeenCalledWith(

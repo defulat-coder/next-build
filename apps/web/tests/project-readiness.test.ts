@@ -6,11 +6,17 @@ const primaryRepo = {
   accessStatus: "available" as const,
   addedAt: new Date("2026-01-01"),
   defaultBranch: "main",
+  canCreatePr: true,
+  canPush: true,
+  detachedAt: null,
   id: "r-1",
   isPrimary: true,
+  lastExecutionValidatedAt: new Date("2026-01-01"),
   lastValidatedAt: new Date("2026-01-01"),
   projectId: "p-1",
+  providerRepoId: "1",
   repo: "octo/one",
+  version: 1,
 };
 
 describe("deriveReadiness", () => {

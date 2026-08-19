@@ -7,22 +7,40 @@ import type { ActorContext } from "@/server/domains/iam/model";
 import type { ProjectStore } from "@/server/domains/project/ports";
 
 const project = {
+  archivedAt: null,
+  completedAt: null,
+  completedBy: null,
+  completionCriteriaResults: [],
+  completionSummary: null,
   createdAt: new Date("2026-01-01"),
   createdBy: "u-1",
   description: null,
+  desiredOutcome: null,
   id: "p-1",
   name: "demo",
+  nonGoals: null,
+  problemStatement: null,
+  successCriteria: [],
+  targetDate: null,
+  lifecycleStatus: "planned" as const,
   updatedAt: new Date("2026-01-01"),
+  version: 1,
 };
 const primary = {
   accessStatus: "available" as const,
   addedAt: new Date("2026-01-01"),
   defaultBranch: "main",
+  canCreatePr: true,
+  canPush: true,
+  detachedAt: null,
   id: "r-1",
   isPrimary: true,
+  lastExecutionValidatedAt: new Date("2026-01-01"),
   lastValidatedAt: new Date("2026-01-01"),
   projectId: "p-1",
+  providerRepoId: "1",
   repo: "octo/one",
+  version: 1,
 };
 const candidate = { ...primary, id: "r-2", isPrimary: false, repo: "octo/two" };
 const unavailable = {
@@ -46,6 +64,7 @@ function makeDeps() {
   const projectStore: ProjectStore = {
     addRepo: vi.fn(),
     createProject: vi.fn(),
+    archiveProject: vi.fn(),
     deleteProject: vi.fn(),
     getProject: vi.fn(async () =>
       ok({ primaryRepo: primary, project, repos: [primary, candidate, unavailable] }),
@@ -65,7 +84,7 @@ describe("setPrimaryRepo", () => {
     const result = await createSetPrimaryRepo(deps)({ actor, projectId: "p-1", repoId: "r-2" });
 
     expect(result.ok && result.value.isPrimary).toBe(true);
-    expect(deps.projectStore.setPrimaryRepo).toHaveBeenCalledWith("p-1", "r-2");
+    expect(deps.projectStore.setPrimaryRepo).toHaveBeenCalledWith("p-1", "r-2", 1);
     expect(deps.logger.info).toHaveBeenCalledWith(
       expect.objectContaining({ event: "project.primary_repo_changed", from_repo_id: "r-1", to_repo_id: "r-2" }),
       "项目主仓库已切换",

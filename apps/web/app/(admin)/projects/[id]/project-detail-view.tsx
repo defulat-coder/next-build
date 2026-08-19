@@ -5,8 +5,9 @@ import {
   CircleAlert,
   CircleCheck,
   CircleDashed,
+  ClipboardCheck,
+  BookOpen,
   Clock3,
-  FolderKanban,
   FolderGit2,
   GitBranch,
   GitFork,
@@ -27,10 +28,14 @@ import { readApiError } from "@/lib/api-error";
 import { ProjectWorkspaceDesignContract } from "../project-design-contract";
 import { ProjectRepositories } from "./project-repositories";
 import { ProjectSettings } from "./project-settings";
+import { ProjectTasks } from "./project-tasks";
+import { ProjectWiki } from "./project-wiki";
 import type { ProjectDetailDto, ProjectDetailTab } from "./project-types";
 
 const tabs: { icon: React.ComponentType<{ className?: string }>; label: string; value: ProjectDetailTab }[] = [
   { icon: LayoutDashboard, label: "概览", value: "overview" },
+  { icon: ClipboardCheck, label: "任务", value: "tasks" },
+  { icon: BookOpen, label: "Wiki", value: "wiki" },
   { icon: GitBranch, label: "仓库", value: "repos" },
   { icon: Settings2, label: "设置", value: "settings" },
 ];
@@ -198,18 +203,27 @@ export function ProjectDetailView({ projectId, activeTab }: { projectId: string;
                 <ProjectDetailSkeleton />
               ) : activeTab === "overview" ? (
                 <ProjectOverview detail={detail} />
+              ) : activeTab === "tasks" ? (
+                <ProjectTasks
+                  projectId={projectId}
+                  canCreate={!detail.project.archivedAt && hasProjectPermission(projectId, "task:create")}
+                  canAccept={!detail.project.archivedAt && hasProjectPermission(projectId, "task:accept")}
+                  repos={detail.repos}
+                />
+              ) : activeTab === "wiki" ? (
+                <ProjectWiki projectId={projectId} canGenerate={!detail.project.archivedAt && hasProjectPermission(projectId, "wiki:generate")} />
               ) : activeTab === "repos" ? (
                 <ProjectRepositories
                   projectId={projectId}
                   repos={detail.repos}
-                  canManage={hasProjectPermission(projectId, "repo:manage")}
+                  canManage={!detail.project.archivedAt && hasProjectPermission(projectId, "repo:manage")}
                   onChanged={load}
                 />
               ) : (
                 <ProjectSettings
                   project={detail.project}
-                  canUpdate={hasProjectPermission(projectId, "project:update")}
-                  canDelete={hasProjectPermission(projectId, "project:delete")}
+                  canUpdate={!detail.project.archivedAt && hasProjectPermission(projectId, "project:update")}
+                  canDelete={!detail.project.archivedAt && hasProjectPermission(projectId, "project:delete")}
                   onChanged={load}
                 />
               )}
@@ -222,6 +236,30 @@ export function ProjectDetailView({ projectId, activeTab }: { projectId: string;
 }
 
 function ProjectOverview({ detail }: { detail: ProjectDetailDto }) {
+  const [overview, setOverview] = React.useState<{
+    taskSummary: { executing: number; review: number; acceptancePending: number; accepted: number; failed: number };
+    knowledge: { published: boolean; stale: boolean };
+    members: Array<{ userId: string; name: string; role: string }>;
+    eligibility: { task: { ready: boolean; blocker: string | null }; wiki: { ready: boolean; blocker: string | null }; ask: { ready: boolean; blocker: string | null } };
+  } | null>(null);
+  const [overviewError, setOverviewError] = React.useState(false);
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const response = await fetch(`/api/projects/${detail.project.id}/overview`);
+        if (!response.ok) throw new Error("overview failure");
+        setOverview(await response.json());
+        setOverviewError(false);
+      } catch { setOverviewError(true); }
+    })();
+  }, [detail.project.id]);
+  const briefFields = [detail.project.problemStatement, detail.project.desiredOutcome, detail.project.nonGoals, detail.project.targetDate];
+  const briefCompleted = briefFields.filter(Boolean).length + (detail.project.successCriteria.length > 0 ? 1 : 0);
+  const activeTasks = overview?.taskSummary.executing ?? 0;
+  const failedTasks = overview?.taskSummary.failed ?? 0;
+  const reviewTasks = overview?.taskSummary.review ?? 0;
+  const acceptanceTasks = overview?.taskSummary.acceptancePending ?? 0;
+  const acceptedTasks = overview?.taskSummary.accepted ?? 0;
   const state = {
     setup_required: {
       icon: CircleDashed,
@@ -232,7 +270,7 @@ function ProjectOverview({ detail }: { detail: ProjectDetailDto }) {
     ready: {
       icon: CircleCheck,
       title: "工作区已就绪",
-      description: "主仓库最近一次校验可访问，任务和 Wiki 可以使用这个工作区。",
+      description: "主仓库 metadata 校验可访问；任务、Wiki 与 Ask 仍分别受各自能力门禁约束。",
       action: "查看仓库",
     },
     needs_attention: {
@@ -264,7 +302,7 @@ function ProjectOverview({ detail }: { detail: ProjectDetailDto }) {
             <div className="min-w-0 flex-1">
               <h2 className="text-sm font-semibold">{state.title}</h2>
               <p className="text-muted-foreground mt-1 text-sm leading-6">{state.description}</p>
-              <Button asChild variant="outline" size="sm" className="mt-4">
+              <Button asChild variant={detail.readiness === "setup_required" ? "default" : "outline"} size="sm" className="mt-4">
                 <Link href={`/projects/${detail.project.id}/repos` as Route}>{state.action}</Link>
               </Button>
             </div>
@@ -272,16 +310,22 @@ function ProjectOverview({ detail }: { detail: ProjectDetailDto }) {
         </section>
 
         <section className="mt-8 max-w-3xl">
-          <h2 className="text-sm font-semibold">工作区路径</h2>
-          <p className="text-muted-foreground mt-1 text-xs">项目通过主仓库连接到后续任务与 Wiki。</p>
+          <div className="flex items-end justify-between"><div><h2 className="text-sm font-semibold">项目 Brief</h2><p className="text-muted-foreground mt-1 text-xs">任务与验收共同使用的项目上下文。</p></div><Link href={`/projects/${detail.project.id}/settings` as Route} className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline">编辑</Link></div>
           <div className="mt-4 divide-y border-y">
-            <PathRow label="项目" value={detail.project.name} icon={FolderKanban} />
-            <PathRow label="主仓库" value={detail.primaryRepo?.repo ?? "未配置"} icon={GitBranch} mono />
-            <PathRow
-              label="状态"
-              value={detail.readiness === "ready" ? "已就绪" : detail.readiness === "needs_attention" ? "需处理" : "待配置"}
-              icon={detail.readiness === "ready" ? CircleCheck : detail.readiness === "needs_attention" ? CircleAlert : CircleDashed}
-            />
+            <BriefRow label="问题" value={detail.project.problemStatement} />
+            <BriefRow label="期望结果" value={detail.project.desiredOutcome} />
+            <BriefRow label="成功标准" value={detail.project.successCriteria.length ? detail.project.successCriteria.join("；") : null} />
+            <BriefRow label="非目标" value={detail.project.nonGoals} />
+            <BriefRow label="目标日期" value={detail.project.targetDate ? formatDateTime(detail.project.targetDate) : null} />
+          </div>
+        </section>
+
+        <section className="mt-8 max-w-3xl">
+          <div className="flex items-end justify-between"><div><h2 className="text-sm font-semibold">交付闭环</h2><p className="text-muted-foreground mt-1 text-xs">从 Brief 到任务、评审与知识沉淀的当前状态。</p></div><span className="text-muted-foreground text-xs">Brief {briefCompleted}/5</span></div>
+          <div className="mt-4 divide-y border-y">
+            <Link href={`/projects/${detail.project.id}/settings` as Route} className="grid grid-cols-[24px_1fr_auto] items-center gap-3 py-3 text-xs outline-none hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring"><Settings2 className="text-muted-foreground size-3.5" /><span>完善项目 Brief</span><span className="text-muted-foreground">{briefCompleted === 5 ? "完整" : `缺 ${5 - briefCompleted} 项`}</span></Link>
+            <Link href={`/projects/${detail.project.id}/tasks` as Route} className="grid grid-cols-[24px_1fr_auto] items-center gap-3 py-3 text-xs outline-none hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring"><ClipboardCheck className="text-muted-foreground size-3.5" /><span>任务与交付</span><span className="text-muted-foreground">{activeTasks} 执行 · {reviewTasks} 待评审 · {acceptanceTasks} 待验收 · {acceptedTasks} 已验收 · {failedTasks} 失败</span></Link>
+            <Link href={`/projects/${detail.project.id}/wiki` as Route} className="grid grid-cols-[24px_1fr_auto] items-center gap-3 py-3 text-xs outline-none hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring"><BookOpen className="text-muted-foreground size-3.5" /><span>项目知识</span><span className="text-muted-foreground">{overview?.knowledge.published ? overview.knowledge.stale ? "需要更新" : "已发布" : "未生成"}</span></Link>
           </div>
         </section>
       </main>
@@ -296,36 +340,32 @@ function ProjectOverview({ detail }: { detail: ProjectDetailDto }) {
             label="最近校验"
             value={detail.primaryRepo ? formatDateTime(detail.primaryRepo.lastValidatedAt) : "尚未校验"}
           />
+          <PropertyRow icon={ClipboardCheck} label="活跃任务" value={`${activeTasks}`} />
+          <PropertyRow icon={BookOpen} label="Wiki" value={overview?.knowledge.published ? overview.knowledge.stale ? "需更新" : "最新" : "未发布"} />
         </dl>
         <div className="mt-6 border-t pt-4">
-          <p className="text-xs font-medium">待处理事项</p>
-          <p className="text-muted-foreground mt-2 text-xs leading-5">
-            {detail.readiness === "ready" ? "当前没有阻断项。" : state.description}
-          </p>
+          <p className="text-xs font-medium">项目成员</p>
+          <div className="mt-3 grid gap-2">{overview?.members.length ? overview.members.map((member) => <div key={member.userId} className="flex items-center justify-between gap-3 text-xs"><span className="truncate">{member.name}</span><span className="text-muted-foreground">{member.role === "project:owner" ? "负责人" : member.role === "project:member" ? "成员" : "只读"}</span></div>) : <p className="text-muted-foreground text-xs">暂无成员信息</p>}</div>
+        </div>
+        <div className="mt-6 border-t pt-4">
+          <p className="text-xs font-medium">能力门禁</p>
+          <div className="mt-3 divide-y border-y"><CapabilityRow label="创建任务" ready={!overviewError && Boolean(overview?.eligibility.task.ready)} blocked={overview?.eligibility.task.blocker ?? "状态读取中"} /><CapabilityRow label="生成 Wiki" ready={!overviewError && Boolean(overview?.eligibility.wiki.ready)} blocked={overview?.eligibility.wiki.blocker ?? "状态读取中"} /><CapabilityRow label="Ask AI" ready={!overviewError && Boolean(overview?.eligibility.ask.ready)} blocked={overview?.eligibility.ask.blocker ?? "状态读取中"} /></div>
+          {overviewError ? <p className="text-destructive mt-3 text-xs leading-5">交付汇总读取失败，请刷新后再判断项目状态。</p> : null}
         </div>
       </aside>
     </div>
   );
 }
 
-function PathRow({
-  icon: Icon,
-  label,
-  value,
-  mono = false,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function CapabilityRow({ label, ready, blocked }: { label: string; ready: boolean; blocked: string }) {
+  return <div className="flex items-center justify-between gap-3 py-2.5 text-xs"><span>{label}</span><span className={ready ? "text-success" : "text-muted-foreground"}>{ready ? "可用" : blocked}</span></div>;
+}
+
+function BriefRow({ label, value }: { label: string; value: string | null }) {
   return (
-    <div className="grid grid-cols-[180px_minmax(0,1fr)] items-center px-4 py-3">
-      <span className="text-muted-foreground flex items-center gap-2 text-xs">
-        <Icon className="size-3.5" />
-        {label}
-      </span>
-      <span className={cn("truncate text-sm", mono && "font-mono text-xs")}>{value}</span>
+    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-5 py-3">
+      <span className="text-muted-foreground text-xs">{label}</span>
+      <span className={cn("text-xs leading-5", !value && "text-muted-foreground")}>{value || "尚未填写"}</span>
     </div>
   );
 }
