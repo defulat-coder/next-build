@@ -47,8 +47,8 @@ interface UserWithRolesDto {
 
 /** 可选整站角色（site:viewer 本期预留不启用，docs/architecture-rbac-menu.md §1.1）。 */
 const SITE_ROLE_OPTIONS: { value: SiteRoleCode; label: string }[] = [
-  { value: "site:admin", label: "管理员" },
-  { value: "site:member", label: "成员" },
+  { value: "site:admin", label: "整站管理员" },
+  { value: "site:member", label: "整站成员" },
 ];
 
 function siteRoleLabel(role: SiteRoleCode | null): string {

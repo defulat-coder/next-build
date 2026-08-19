@@ -227,8 +227,10 @@ describe("IamStore", () => {
     const admin = result.value.find((r) => r.code === "site:admin");
     expect(admin?.permissions).toHaveLength(13);
     expect(admin?.permissions).toContain("role:manage");
+    expect(admin?.name).toBe("整站管理员");
     const member = result.value.find((r) => r.code === "site:member");
     expect(member?.permissions.sort()).toEqual(["project:create", "project:read"]);
+    expect(result.value.find((r) => r.code === "project:viewer")?.name).toBe("项目只读");
   });
 
   it("setRolePermissions 全量替换映射并即刻生效；未知权限码返回 DB_WRITE_FAILED", async () => {

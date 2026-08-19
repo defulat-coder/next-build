@@ -34,13 +34,13 @@ export type RoleCode = SiteRoleCode | ProjectRoleCode;
 
 /** 内置角色定义（built_in=true，不可删；映射以代码为准，启动种子全量对齐）。 */
 export const BUILTIN_ROLES: readonly { code: RoleCode; scope: "site" | "project"; name: string }[] = [
-  { code: "site:admin", name: "管理员", scope: "site" },
-  { code: "site:member", name: "成员", scope: "site" },
+  { code: "site:admin", name: "整站管理员", scope: "site" },
+  { code: "site:member", name: "整站成员", scope: "site" },
   // 只读整站角色本期预留（docs/architecture-rbac-menu.md §1.1）：全站只读 = 各读类权限。
-  { code: "site:viewer", name: "只读", scope: "site" },
-  { code: "project:owner", name: "负责人", scope: "project" },
-  { code: "project:member", name: "成员", scope: "project" },
-  { code: "project:viewer", name: "只读", scope: "project" },
+  { code: "site:viewer", name: "整站只读", scope: "site" },
+  { code: "project:owner", name: "项目负责人", scope: "project" },
+  { code: "project:member", name: "项目成员", scope: "project" },
+  { code: "project:viewer", name: "项目只读", scope: "project" },
 ];
 
 const ALL_PERMISSIONS = Object.keys(PERMISSIONS) as PermissionCode[];

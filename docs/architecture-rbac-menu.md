@@ -19,40 +19,41 @@
 
 | 角色 | code | 说明 |
 | --- | --- | --- |
-| 管理员 | `site:admin` | 全量权限 + 用户/角色管理；第一个注册用户自动获得 |
-| 成员 | `site:member` | 默认角色：可创建项目、参与被拉入的项目 |
-| 只读（预留） | `site:viewer` | 全站只读；本期不启用，表结构与映射预留 |
+| 整站管理员 | `site:admin` | 全量权限 + 用户/角色管理；第一个注册用户自动获得 |
+| 整站成员 | `site:member` | 默认角色：可创建项目、参与被拉入的项目 |
+| 整站只读（预留） | `site:viewer` | 全站只读；本期不启用，表结构与映射预留 |
 
 ### 1.2 项目角色（project scope）
 
 | 角色 | code | 说明 |
 | --- | --- | --- |
-| 负责人 | `project:owner` | 项目创建者自动获得：仓库配置、成员管理、删项目 |
-| 成员 | `project:member` | 建任务、触发 Wiki 生成、Ask AI |
-| 只读 | `project:viewer` | 项目内只读 |
+| 项目负责人 | `project:owner` | 项目创建者自动获得：仓库配置、成员管理、删项目 |
+| 项目成员 | `project:member` | 建任务、触发 Wiki 生成、Ask AI |
+| 项目只读 | `project:viewer` | 项目内只读 |
 
 ### 1.3 权限码清单（初版）
 
-| 权限码 | 说明 | site:admin | site:member | project:owner | project:member | project:viewer |
-| --- | --- | :-: | :-: | :-: | :-: | :-: |
-| `project:read` | 看项目列表/详情 | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `project:create` | 创建项目 | ✓ | ✓ | — | — | — |
-| `project:update` | 改项目信息 | ✓ | — | ✓ | — | — |
-| `project:delete` | 删项目 | ✓ | — | ✓ | — | — |
-| `repo:manage` | 项目挂载/移除仓库 | ✓ | — | ✓ | — | — |
-| `member:manage` | 项目成员增删/改角色 | ✓ | — | ✓ | — | — |
-| `task:read` | 看任务 | ✓ | — | ✓ | ✓ | ✓ |
-| `task:create` | 创建/驱动任务 | ✓ | — | ✓ | ✓ | — |
-| `wiki:read` | 看 Wiki | ✓ | — | ✓ | ✓ | ✓ |
-| `wiki:generate` | 触发/更新 Wiki 生成 | ✓ | — | ✓ | ✓ | — |
-| `ask:query` | Ask AI 提问 | ✓ | — | ✓ | ✓ | ✓ |
-| `user:manage` | 用户列表、整站角色分配 | ✓ | — | — | — | — |
-| `role:manage` | 角色-权限映射配置 | ✓ | — | — | — | — |
+| 权限码 | 说明 | 整站管理员<br>`site:admin` | 整站成员<br>`site:member` | 整站只读<br>`site:viewer` | 项目负责人<br>`project:owner` | 项目成员<br>`project:member` | 项目只读<br>`project:viewer` |
+| --- | --- | :-: | :-: | :-: | :-: | :-: | :-: |
+| `project:read` | 看项目列表/详情 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `project:create` | 创建项目 | ✓ | ✓ | — | — | — | — |
+| `project:update` | 改项目信息 | ✓ | — | — | ✓ | — | — |
+| `project:delete` | 删项目 | ✓ | — | — | ✓ | — | — |
+| `repo:manage` | 项目挂载/移除仓库 | ✓ | — | — | ✓ | — | — |
+| `member:manage` | 项目成员增删/改角色 | ✓ | — | — | ✓ | — | — |
+| `task:read` | 看任务 | ✓ | — | ✓ | ✓ | ✓ | ✓ |
+| `task:create` | 创建/驱动任务 | ✓ | — | — | ✓ | ✓ | — |
+| `wiki:read` | 看 Wiki | ✓ | — | ✓ | ✓ | ✓ | ✓ |
+| `wiki:generate` | 触发/更新 Wiki 生成 | ✓ | — | — | ✓ | ✓ | — |
+| `ask:query` | Ask AI 提问 | ✓ | — | — | ✓ | ✓ | ✓ |
+| `user:manage` | 用户列表、整站角色分配 | ✓ | — | — | — | — | — |
+| `role:manage` | 角色-权限映射配置 | ✓ | — | — | — | — | — |
 
 规则说明：
 
 - 整站 `member` 的项目内权限完全来自 `project_members` 中的项目角色；未被拉进任何项目时只能创建项目和看到自己参与的内容。
 - 带 `—` 的格子表示该 scope 的角色不持有此权限（如 `project:create` 是整站级权限，项目角色永远不会有）。
+- 「角色与权限」管理页将权限叶子放在单一矩阵中，按「整站角色／项目角色」分组显示；矩阵上方可收起资源目录（项目 → 仓库 / 成员，知识与问答 → Wiki 等），目录仅控制显示，只有权限叶子可编辑。
 - 项目列表对非 admin 只返回「我创建的 ∪ 我是成员的」项目，过滤在应用层做，不靠前端藏。
 
 ## 2. 数据模型
