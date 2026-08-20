@@ -20,11 +20,20 @@ import type { AuthVariables } from "./auth-guard";
  * 编排逻辑在 application/auth 用例里，失败日志（auth.failed）由用例打点。
  * Variables 与主 app 一致：requestId 由 api.request 中间件写入，auth.start/auth.failed 靠它串联请求日志。
  */
+/**
+ * 浏览器实际访问的源（origin）。经 portless 代理开发时它注入 PORTLESS_URL
+ * （如 https://next-build.localhost），此时 req.url 是 dev server 内部地址
+ * （localhost:随机端口）——redirect_uri 用它既不稳定、浏览器也够不到，必须换成代理域名。
+ */
+function resolvePublicOrigin(reqUrl: string): string {
+  return process.env.PORTLESS_URL ?? new URL(reqUrl).origin;
+}
+
 export const authRoutes = new Hono<{ Variables: AuthVariables }>()
 
   // 跳转到飞书授权页，state 写 cookie 防 CSRF。
   .get("/feishu", (c) => {
-    const redirectUri = new URL("/api/auth/feishu/callback", c.req.url).toString();
+    const redirectUri = new URL("/api/auth/feishu/callback", resolvePublicOrigin(c.req.url)).toString();
     // Next dev 会把 req.url 归一到 localhost：用户若从 127.0.0.1 进来，cookie 种在 127.0.0.1
     // 而飞书回调落在 localhost，state cookie 必然缺失（STATE_MISMATCH）。
     // 发起授权前先把浏览器 308 到归一 host，保证 cookie 与回调同 host（生产环境 Host 与 req.url 一致，此分支不触发）。
@@ -70,7 +79,7 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
       return c.redirect("/login?error=STATE_MISMATCH");
     }
 
-    const redirectUri = new URL("/api/auth/feishu/callback", c.req.url).toString();
+    const redirectUri = new URL("/api/auth/feishu/callback", resolvePublicOrigin(c.req.url)).toString();
     const loginWithFeishu = createLoginWithFeishu({
       authStore,
       gateway: getFeishuGateway(),

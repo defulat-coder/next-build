@@ -9,7 +9,7 @@ pnpm workspace：
 - `packages/result` — 零依赖 `Result<T, E>` 工具（`ok` / `err` / `map` / `flatMap` / `tryCatch`），异常处理约定的基础设施
 - `packages/sandbox` — 沙箱层窄接口（`SandboxProvider`），实现为 microsandbox
 
-根目录脚本均为委托：`pnpm dev` / `build` / `lint` 转发到 `apps/web`，`pnpm typecheck` / `test` 跑全部包（`pnpm -r`）。
+根目录脚本均为委托：`pnpm build` / `lint` 转发到 `apps/web`，`pnpm typecheck` / `test` 跑全部包（`pnpm -r`）。`pnpm dev` 走 [portless](https://github.com/vercel-labs/portless) 代理，访问 `https://next-build.localhost`（HTTPS，需本机已全局安装 portless 并启动代理）；没装 portless 时用 `pnpm dev:direct` 直连 3000 端口。
 
 ## Package Manager
 

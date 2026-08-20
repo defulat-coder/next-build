@@ -2,6 +2,7 @@
   "name": "@next-build/web",
   "private": true,
   "type": "module",
+  "portless": "next-build",
   "scripts": {
     "dev": "next dev --turbopack --hostname 127.0.0.1",
     "build": "next build",
