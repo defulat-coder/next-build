@@ -36,7 +36,8 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
     const redirectUri = new URL("/api/auth/feishu/callback", resolvePublicOrigin(c.req.url)).toString();
     // Next dev 会把 req.url 归一到 localhost：用户若从 127.0.0.1 进来，cookie 种在 127.0.0.1
     // 而飞书回调落在 localhost，state cookie 必然缺失（STATE_MISMATCH）。
-    // 发起授权前先把浏览器 308 到归一 host，保证 cookie 与回调同 host（生产环境 Host 与 req.url 一致，此分支不触发）。
+    // 发起授权前先把浏览器重定向到归一 host，保证 cookie 与回调同 host（生产环境 Host 与 req.url 一致，此分支不触发）。
+    // 用 307 而非 308：dev 端口/host 常变，永久重定向会被浏览器缓存旧地址（踩过坑）。
     const canonicalHost = new URL(redirectUri).host;
     const requestHost = c.req.header("host");
     if (requestHost && requestHost !== canonicalHost) {
@@ -44,7 +45,7 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
         { canonical_host: canonicalHost, event: "auth.host_normalized", request_host: requestHost, request_id: c.get("requestId") },
         "OAuth 前归一访问 host",
       );
-      return c.redirect(`${new URL(redirectUri).origin}/api/auth/feishu`, 308);
+      return c.redirect(`${new URL(redirectUri).origin}/api/auth/feishu`, 307);
     }
 
     const env = getFeishuEnv();
