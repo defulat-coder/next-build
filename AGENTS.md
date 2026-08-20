@@ -34,6 +34,7 @@ Use **pnpm**（Node.js `>=22.19.0`）：`pnpm install`, `pnpm dev`
 
 - `PRODUCT.md` 是产品规划的 Source of Truth；功能实现前先对照它。
 - **不考虑向后兼容**：实现和重构直接以当前需求为准；不要保留旧 API、旧数据结构、兼容层、迁移桥接或降级分支，除非用户明确要求。
+- **动效首选 Motion**：项目内新增或修改动效时，优先使用已安装的 `motion`（React API 从 `motion/react` 导入）；除非明确不适用，不要另写动画方案或引入其他动画库。
 - 提交信息使用中文 Conventional Commits。
 - 保持提交在本地，除非明确要求 push。
 
@@ -82,7 +83,7 @@ Use **pnpm**（Node.js `>=22.19.0`）：`pnpm install`, `pnpm dev`
 
 一切需要驱动浏览器的操作——打开页面、点击/填表、截图、抓数据、验证前端改动、调试页面——统一用项目内 skill `ego-browser`（`.agents/skills/ego-browser/`，来源 `citrolabs/ego-lite`），通过 `ego-browser nodejs` CLI 执行。
 
-- **不用 agent-browser、Playwright 直连或其他浏览器工具**，即使其他 skill（如 `next-dev-loop`）的流程里提到它们；遇到时替换为 ego-browser 完成等价步骤。
+- **不用 agent-browser、Playwright 直连或其他浏览器工具**，即使其他 skill 的流程里提到它们；遇到时替换为 ego-browser 完成等价步骤。
 - ego-browser 复用用户登录态且在隔离 task space 中运行，不会抢占用户正在用的浏览器窗口。
 
 ## Commit Attribution

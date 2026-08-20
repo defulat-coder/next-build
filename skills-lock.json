@@ -223,12 +223,6 @@
       "skillPath": "skills/next-cache-components-optimizer/SKILL.md",
       "computedHash": "bb56d029b57617215a64283adff4a020b2484162234595a9e4cb3703dd9084bf"
     },
-    "next-dev-loop": {
-      "source": "vercel/next.js",
-      "sourceType": "github",
-      "skillPath": "skills/next-dev-loop/SKILL.md",
-      "computedHash": "5b567d2e521056db6b8b37c46c6b2b9c72de5192c0daeb351c966d61e0702630"
-    },
     "ponytail": {
       "source": "dietrichgebert/ponytail",
       "sourceType": "github",
